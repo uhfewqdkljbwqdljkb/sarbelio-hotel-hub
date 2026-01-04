@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { RestaurantTable, POSOrder, MenuItem, MenuCategory, OrderItem } from '@/types/restaurant';
-import { MENU_CATEGORIES, MENU_ITEMS } from '@/data/restaurantMock';
 import { 
   ArrowLeft, 
   Plus, 
@@ -9,7 +8,6 @@ import {
   Send, 
   CreditCard,
   Users,
-  X,
   Check,
   ChefHat
 } from 'lucide-react';
@@ -17,21 +15,25 @@ import {
 interface POSInterfaceProps {
   table: RestaurantTable;
   existingOrder?: POSOrder;
+  categories: MenuCategory[];
+  menuItems: MenuItem[];
   onClose: () => void;
   onSaveOrder: (order: POSOrder) => void;
 }
 
 const POSInterface: React.FC<POSInterfaceProps> = ({ 
   table, 
-  existingOrder, 
+  existingOrder,
+  categories,
+  menuItems,
   onClose, 
   onSaveOrder 
 }) => {
-  const [activeCategory, setActiveCategory] = useState<string>(MENU_CATEGORIES[0].id);
+  const [activeCategory, setActiveCategory] = useState<string>(categories[0]?.id || '');
   const [orderItems, setOrderItems] = useState<OrderItem[]>(existingOrder?.items || []);
   const [guestCount, setGuestCount] = useState(existingOrder?.guestCount || table.capacity);
 
-  const filteredMenuItems = MENU_ITEMS.filter(item => item.categoryId === activeCategory);
+  const filteredMenuItems = menuItems.filter(item => item.categoryId === activeCategory && item.isAvailable);
 
   const addItem = (menuItem: MenuItem) => {
     const existingItem = orderItems.find(i => i.menuItemId === menuItem.id);
@@ -130,49 +132,51 @@ const POSInterface: React.FC<POSInterfaceProps> = ({
 
         {/* Categories */}
         <div className="flex overflow-x-auto p-3 gap-2 border-b border-border bg-card scrollbar-hide">
-          {MENU_CATEGORIES.map(category => (
-            <button
-              key={category.id}
-              onClick={() => setActiveCategory(category.id)}
-              className={`
-                px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
-                ${activeCategory === category.id 
-                  ? 'bg-primary text-primary-foreground shadow-md' 
-                  : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}
-              `}
-            >
-              <span className="mr-1.5">{category.icon}</span>
-              {category.name}
-            </button>
-          ))}
+          {categories.length === 0 ? (
+            <div className="text-sm text-muted-foreground px-4">
+              No menu categories. Go to Settings to add categories.
+            </div>
+          ) : (
+            categories.map(category => (
+              <button
+                key={category.id}
+                onClick={() => setActiveCategory(category.id)}
+                className={`
+                  px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
+                  ${activeCategory === category.id 
+                    ? 'bg-primary text-primary-foreground shadow-md' 
+                    : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}
+                `}
+              >
+                <span className="mr-1.5">{category.icon}</span>
+                {category.name}
+              </button>
+            ))
+          )}
         </div>
 
         {/* Menu Items Grid */}
         <div className="flex-1 overflow-y-auto p-4 bg-secondary/30">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {filteredMenuItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => item.isAvailable && addItem(item)}
-                disabled={!item.isAvailable}
-                className={`
-                  p-4 rounded-xl text-left transition-all
-                  ${item.isAvailable 
-                    ? 'bg-card border border-border hover:border-primary hover:shadow-md active:scale-[0.98]' 
-                    : 'bg-muted/50 opacity-50 cursor-not-allowed'}
-                `}
-              >
-                <div className="font-medium text-foreground text-sm mb-1">{item.name}</div>
-                <div className="text-xs text-muted-foreground line-clamp-2 mb-2">{item.description}</div>
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-primary-700">${item.price.toFixed(2)}</span>
-                  {!item.isAvailable && (
-                    <span className="text-xs text-destructive">Sold out</span>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
+          {filteredMenuItems.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <p>No items in this category</p>
+              <p className="text-sm mt-1">Add items in Settings → Menu Management</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {filteredMenuItems.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => addItem(item)}
+                  className="p-4 rounded-xl text-left transition-all bg-card border border-border hover:border-primary hover:shadow-md active:scale-[0.98]"
+                >
+                  <div className="font-medium text-foreground text-sm mb-1">{item.name}</div>
+                  <div className="text-xs text-muted-foreground line-clamp-2 mb-2">{item.description}</div>
+                  <div className="font-bold text-primary-700">${item.price.toFixed(2)}</div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
