@@ -46,90 +46,75 @@ const TableGrid: React.FC<TableGridProps> = ({ tables, orders, onTableClick }) =
     return `${hours}h ${minutes % 60}m`;
   };
 
-  const zones = [
-    { id: 'INDOOR', label: 'Indoor', icon: '🏠' },
-    { id: 'TERRACE', label: 'Terrace', icon: '☀️' },
-    { id: 'BAR', label: 'Bar', icon: '🍸' },
-  ] as const;
+  if (tables.length === 0) {
+    return (
+      <div className="text-center py-16 text-muted-foreground">
+        <Users className="w-16 h-16 mx-auto mb-4 opacity-30" />
+        <p className="text-lg">No tables configured</p>
+        <p className="text-sm mt-1">Go to Settings to add tables to your floor plan</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      {zones.map(zone => {
-        const zoneTables = tables.filter(t => t.zone === zone.id);
-        if (zoneTables.length === 0) return null;
-
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      {tables.map(table => {
+        const order = getTableOrder(table.id);
+        
         return (
-          <div key={zone.id}>
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center">
-              <span className="mr-2">{zone.icon}</span>
-              {zone.label}
-              <span className="ml-2 text-xs font-normal">
-                ({zoneTables.filter(t => t.status === 'AVAILABLE').length} available)
-              </span>
-            </h3>
+          <button
+            key={table.id}
+            onClick={() => onTableClick(table)}
+            className={`
+              relative p-4 rounded-xl border-2 transition-all duration-200
+              ${getStatusStyles(table.status)}
+              hover:shadow-md hover:scale-[1.02] active:scale-[0.98]
+            `}
+          >
+            {/* Status indicator */}
+            <div className={`absolute top-2 right-2 w-2.5 h-2.5 rounded-full ${getStatusColor(table.status)}`} />
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {zoneTables.map(table => {
-                const order = getTableOrder(table.id);
-                
-                return (
-                  <button
-                    key={table.id}
-                    onClick={() => onTableClick(table)}
-                    className={`
-                      relative p-4 rounded-xl border-2 transition-all duration-200
-                      ${getStatusStyles(table.status)}
-                      hover:shadow-md hover:scale-[1.02] active:scale-[0.98]
-                    `}
-                  >
-                    {/* Status indicator */}
-                    <div className={`absolute top-2 right-2 w-2.5 h-2.5 rounded-full ${getStatusColor(table.status)}`} />
-                    
-                    {/* Table number */}
-                    <div className="text-2xl font-bold text-foreground mb-2">
-                      {table.number}
-                    </div>
-                    
-                    {/* Capacity */}
-                    <div className="flex items-center text-xs text-muted-foreground mb-2">
-                      <Users className="w-3 h-3 mr-1" />
-                      {table.capacity} seats
-                    </div>
-                    
-                    {/* Order info if occupied */}
-                    {order && (
-                      <div className="mt-2 pt-2 border-t border-border/50">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="flex items-center text-muted-foreground">
-                            <Clock className="w-3 h-3 mr-1" />
-                            {getElapsedTime(order.openedAt)}
-                          </span>
-                          <span className="font-semibold text-foreground">
-                            ${order.totalAmount.toFixed(0)}
-                          </span>
-                        </div>
-                        <div className="flex items-center text-xs text-muted-foreground mt-1">
-                          <Utensils className="w-3 h-3 mr-1" />
-                          {order.items.length} items
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Status label */}
-                    <div className={`
-                      mt-2 text-xs font-semibold uppercase tracking-wide
-                      ${table.status === 'AVAILABLE' ? 'text-green-700' : ''}
-                      ${table.status === 'OCCUPIED' ? 'text-red-700' : ''}
-                      ${table.status === 'RESERVED' ? 'text-blue-700' : ''}
-                      ${table.status === 'CLEANING' ? 'text-yellow-700' : ''}
-                    `}>
-                      {table.status}
-                    </div>
-                  </button>
-                );
-              })}
+            {/* Table number */}
+            <div className="text-2xl font-bold text-foreground mb-2">
+              {table.number}
             </div>
-          </div>
+            
+            {/* Capacity */}
+            <div className="flex items-center text-xs text-muted-foreground mb-2">
+              <Users className="w-3 h-3 mr-1" />
+              {table.capacity} seats
+            </div>
+            
+            {/* Order info if occupied */}
+            {order && (
+              <div className="mt-2 pt-2 border-t border-border/50">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center text-muted-foreground">
+                    <Clock className="w-3 h-3 mr-1" />
+                    {getElapsedTime(order.openedAt)}
+                  </span>
+                  <span className="font-semibold text-foreground">
+                    ${order.totalAmount.toFixed(0)}
+                  </span>
+                </div>
+                <div className="flex items-center text-xs text-muted-foreground mt-1">
+                  <Utensils className="w-3 h-3 mr-1" />
+                  {order.items.length} items
+                </div>
+              </div>
+            )}
+            
+            {/* Status label */}
+            <div className={`
+              mt-2 text-xs font-semibold uppercase tracking-wide
+              ${table.status === 'AVAILABLE' ? 'text-green-700' : ''}
+              ${table.status === 'OCCUPIED' ? 'text-red-700' : ''}
+              ${table.status === 'RESERVED' ? 'text-blue-700' : ''}
+              ${table.status === 'CLEANING' ? 'text-yellow-700' : ''}
+            `}>
+              {table.status}
+            </div>
+          </button>
         );
       })}
     </div>

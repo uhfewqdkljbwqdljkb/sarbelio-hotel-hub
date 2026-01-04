@@ -1,26 +1,34 @@
-import React, { useState } from 'react';
-import { TABLES, INITIAL_ORDERS } from '@/data/restaurantMock';
-import { RestaurantTable, POSOrder } from '@/types/restaurant';
+import React, { useState, useEffect } from 'react';
+import { TABLES, INITIAL_ORDERS, MENU_CATEGORIES, MENU_ITEMS } from '@/data/restaurantMock';
+import { RestaurantTable, POSOrder, MenuCategory, MenuItem } from '@/types/restaurant';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import TableGrid from '@/components/restaurant/TableGrid';
 import POSInterface from '@/components/restaurant/POSInterface';
 import OrderList from '@/components/restaurant/OrderList';
+import MenuManager from '@/components/restaurant/MenuManager';
+import FloorPlanEditor from '@/components/restaurant/FloorPlanEditor';
 import { 
   UtensilsCrossed, 
   Users, 
   DollarSign, 
   Clock,
   LayoutGrid,
-  List
+  List,
+  Settings,
+  X
 } from 'lucide-react';
 
-type ViewMode = 'FLOOR' | 'POS' | 'ORDERS';
+type ViewMode = 'FLOOR' | 'POS' | 'ORDERS' | 'SETTINGS';
+type SettingsTab = 'MENU' | 'FLOOR';
 
 const RestaurantPage: React.FC = () => {
   const [view, setView] = useState<ViewMode>('FLOOR');
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>('MENU');
   const [activeTable, setActiveTable] = useState<RestaurantTable | null>(null);
   const [orders, setOrders] = useState<POSOrder[]>(INITIAL_ORDERS);
   const [tables, setTables] = useState<RestaurantTable[]>(TABLES);
+  const [categories, setCategories] = useState<MenuCategory[]>(MENU_CATEGORIES);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(MENU_ITEMS);
 
   // KPIs
   const activeOrdersCount = orders.filter(o => o.status !== 'PAID').length;
@@ -76,12 +84,76 @@ const RestaurantPage: React.FC = () => {
         <POSInterface 
           table={activeTable} 
           existingOrder={existingOrder}
+          categories={categories}
+          menuItems={menuItems}
           onClose={() => {
             setView('FLOOR');
             setActiveTable(null);
           }} 
           onSaveOrder={handleSaveOrder}
         />
+      </div>
+    );
+  }
+
+  // Settings view
+  if (view === 'SETTINGS') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Restaurant Settings</h2>
+            <p className="text-muted-foreground">Configure your menu and floor plan</p>
+          </div>
+          <button
+            onClick={() => setView('FLOOR')}
+            className="px-4 py-2 bg-secondary rounded-lg text-sm font-medium flex items-center hover:bg-secondary/80"
+          >
+            <X className="w-4 h-4 mr-2" />
+            Close Settings
+          </button>
+        </div>
+
+        {/* Settings Tabs */}
+        <div className="flex gap-2 border-b border-border">
+          <button
+            onClick={() => setSettingsTab('MENU')}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              settingsTab === 'MENU' 
+                ? 'border-primary text-primary' 
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Menu Management
+          </button>
+          <button
+            onClick={() => setSettingsTab('FLOOR')}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              settingsTab === 'FLOOR' 
+                ? 'border-primary text-primary' 
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Floor Plan
+          </button>
+        </div>
+
+        {/* Settings Content */}
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden min-h-[500px]">
+          {settingsTab === 'MENU' ? (
+            <MenuManager
+              categories={categories}
+              menuItems={menuItems}
+              onCategoriesChange={setCategories}
+              onMenuItemsChange={setMenuItems}
+            />
+          ) : (
+            <FloorPlanEditor
+              tables={tables}
+              onTablesChange={setTables}
+            />
+          )}
+        </div>
       </div>
     );
   }
@@ -120,6 +192,13 @@ const RestaurantPage: React.FC = () => {
               Orders
             </button>
           </div>
+          <button
+            onClick={() => setView('SETTINGS')}
+            className="px-3 py-2 bg-secondary rounded-lg text-sm font-medium flex items-center hover:bg-secondary/80"
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Settings
+          </button>
         </div>
       </div>
 
