@@ -7,6 +7,7 @@ import Layout from "@/components/layout/Layout";
 import Dashboard from "@/pages/Dashboard";
 import RoomsPage from "@/pages/RoomsPage";
 import ReservationsPage from "@/pages/ReservationsPage";
+import RestaurantPage from "@/pages/RestaurantPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,7 +29,7 @@ const App = () => (
                 <Route path="/rooms" element={<RoomsPage />} />
                 <Route path="/reservations" element={<ReservationsPage />} />
                 <Route path="/housekeeping" element={<PlaceholderPage title="Housekeeping" />} />
-                <Route path="/restaurant" element={<PlaceholderPage title="Restaurant" />} />
+                <Route path="/restaurant" element={<RestaurantPage />} />
                 <Route path="/inventory" element={<PlaceholderPage title="Inventory" />} />
                 <Route path="/financials" element={<PlaceholderPage title="Financials" />} />
                 <Route path="/crm" element={<PlaceholderPage title="CRM & Marketing" />} />
