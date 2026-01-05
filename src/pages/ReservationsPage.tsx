@@ -1,23 +1,159 @@
 import React, { useState } from 'react';
-import { RESERVATIONS } from '@/data/mockData';
+import { RESERVATIONS, ROOMS, GUESTS } from '@/data/mockData';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import { 
   Search, 
   Plus, 
-  Filter,
   Calendar,
   Mail,
-  Phone,
   MoreVertical,
-  ArrowUpDown
+  ArrowUpDown,
+  UserPlus,
+  X
 } from 'lucide-react';
-import { ReservationStatus, BookingSource } from '@/types';
+import { ReservationStatus, BookingSource, Reservation, Guest } from '@/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
+import { differenceInDays, format } from 'date-fns';
 
 const ReservationsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [reservations, setReservations] = useState<Reservation[]>(RESERVATIONS);
+  const [guests, setGuests] = useState<Guest[]>(GUESTS);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [guestMode, setGuestMode] = useState<'existing' | 'new'>('existing');
+  
+  // Form state for new reservation
+  const [selectedGuestId, setSelectedGuestId] = useState('');
+  const [newGuest, setNewGuest] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: ''
+  });
+  const [selectedRoomId, setSelectedRoomId] = useState('');
+  const [checkIn, setCheckIn] = useState('');
+  const [checkOut, setCheckOut] = useState('');
+  const [numGuests, setNumGuests] = useState(1);
+  const [source, setSource] = useState<BookingSource>('DIRECT');
+  const [status, setStatus] = useState<ReservationStatus>('PENDING');
 
-  const filteredReservations = RESERVATIONS.filter(res => {
+  const availableRooms = ROOMS.filter(room => 
+    room.status === 'AVAILABLE' || room.status === 'RESERVED'
+  );
+
+  const calculateNights = () => {
+    if (!checkIn || !checkOut) return 0;
+    const nights = differenceInDays(new Date(checkOut), new Date(checkIn));
+    return nights > 0 ? nights : 0;
+  };
+
+  const calculateTotal = () => {
+    const room = ROOMS.find(r => r.id === selectedRoomId);
+    if (!room) return 0;
+    return room.price * calculateNights();
+  };
+
+  const generateConfirmationCode = () => {
+    return `CNF-${Math.floor(10000 + Math.random() * 90000)}`;
+  };
+
+  const resetForm = () => {
+    setSelectedGuestId('');
+    setNewGuest({ firstName: '', lastName: '', email: '', phone: '' });
+    setSelectedRoomId('');
+    setCheckIn('');
+    setCheckOut('');
+    setNumGuests(1);
+    setSource('DIRECT');
+    setStatus('PENDING');
+    setGuestMode('existing');
+  };
+
+  const handleCreateReservation = () => {
+    // Validation
+    if (guestMode === 'existing' && !selectedGuestId) {
+      toast.error('Please select a guest');
+      return;
+    }
+    if (guestMode === 'new' && (!newGuest.firstName || !newGuest.lastName || !newGuest.email)) {
+      toast.error('Please fill in guest details');
+      return;
+    }
+    if (!selectedRoomId) {
+      toast.error('Please select a room');
+      return;
+    }
+    if (!checkIn || !checkOut) {
+      toast.error('Please select check-in and check-out dates');
+      return;
+    }
+    if (calculateNights() <= 0) {
+      toast.error('Check-out must be after check-in');
+      return;
+    }
+
+    // Get or create guest
+    let guestName = '';
+    let guestEmail = '';
+    
+    if (guestMode === 'existing') {
+      const guest = guests.find(g => g.id === selectedGuestId);
+      if (guest) {
+        guestName = `${guest.firstName} ${guest.lastName}`;
+        guestEmail = guest.email;
+      }
+    } else {
+      // Create new guest
+      const newGuestId = `gst_${Date.now()}`;
+      const createdGuest: Guest = {
+        id: newGuestId,
+        firstName: newGuest.firstName,
+        lastName: newGuest.lastName,
+        email: newGuest.email,
+        phone: newGuest.phone,
+        loyaltyTier: 'STANDARD',
+        loyaltyPoints: 0,
+        totalSpent: 0,
+        totalStays: 0
+      };
+      setGuests([...guests, createdGuest]);
+      guestName = `${newGuest.firstName} ${newGuest.lastName}`;
+      guestEmail = newGuest.email;
+    }
+
+    const room = ROOMS.find(r => r.id === selectedRoomId);
+    
+    const newReservation: Reservation = {
+      id: `res_${Date.now()}`,
+      confirmationCode: generateConfirmationCode(),
+      guestName,
+      guestEmail,
+      roomId: selectedRoomId,
+      roomName: room?.name,
+      checkIn,
+      checkOut,
+      nights: calculateNights(),
+      guests: numGuests,
+      totalAmount: calculateTotal(),
+      status,
+      source,
+      createdAt: format(new Date(), 'yyyy-MM-dd')
+    };
+
+    setReservations([newReservation, ...reservations]);
+    toast.success(`Reservation ${newReservation.confirmationCode} created successfully!`);
+    setIsDialogOpen(false);
+    resetForm();
+  };
+
+  const filteredReservations = reservations.filter(res => {
     const matchesSearch = 
       res.guestName.toLowerCase().includes(searchTerm.toLowerCase()) || 
       res.confirmationCode.toLowerCase().includes(searchTerm.toLowerCase());
@@ -49,11 +185,10 @@ const ReservationsPage: React.FC = () => {
     return sourceColors[source] || 'bg-muted text-muted-foreground';
   };
 
-  // Stats
-  const totalBookings = RESERVATIONS.length;
-  const confirmedBookings = RESERVATIONS.filter(r => r.status === 'CONFIRMED').length;
-  const pendingBookings = RESERVATIONS.filter(r => r.status === 'PENDING').length;
-  const totalRevenue = RESERVATIONS.reduce((sum, r) => sum + r.totalAmount, 0);
+  const totalBookings = reservations.length;
+  const confirmedBookings = reservations.filter(r => r.status === 'CONFIRMED').length;
+  const pendingBookings = reservations.filter(r => r.status === 'PENDING').length;
+  const totalRevenue = reservations.reduce((sum, r) => sum + r.totalAmount, 0);
 
   return (
     <div className="space-y-6">
@@ -62,10 +197,195 @@ const ReservationsPage: React.FC = () => {
           <h2 className="text-2xl font-bold text-foreground">Reservations</h2>
           <p className="text-muted-foreground">Manage bookings and guest reservations.</p>
         </div>
-        <button className="px-4 py-2 bg-foreground text-background rounded-lg hover:opacity-90 shadow-lg flex items-center transition-all hover:scale-[1.02]">
-          <Plus className="w-5 h-5 mr-2" />
-          New Reservation
-        </button>
+        
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <button className="px-4 py-2 bg-foreground text-background rounded-lg hover:opacity-90 shadow-lg flex items-center transition-all hover:scale-[1.02]">
+              <Plus className="w-5 h-5 mr-2" />
+              New Reservation
+            </button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold">Create New Reservation</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-6 py-4">
+              {/* Guest Selection */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Guest Information</Label>
+                <Tabs value={guestMode} onValueChange={(v) => setGuestMode(v as 'existing' | 'new')}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="existing">Existing Guest</TabsTrigger>
+                    <TabsTrigger value="new">New Guest</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="existing" className="mt-4">
+                    <Select value={selectedGuestId} onValueChange={setSelectedGuestId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a guest..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {guests.map(guest => (
+                          <SelectItem key={guest.id} value={guest.id}>
+                            {guest.firstName} {guest.lastName} - {guest.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TabsContent>
+                  
+                  <TabsContent value="new" className="mt-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>First Name *</Label>
+                        <Input
+                          value={newGuest.firstName}
+                          onChange={(e) => setNewGuest({ ...newGuest, firstName: e.target.value })}
+                          placeholder="John"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Last Name *</Label>
+                        <Input
+                          value={newGuest.lastName}
+                          onChange={(e) => setNewGuest({ ...newGuest, lastName: e.target.value })}
+                          placeholder="Doe"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email *</Label>
+                      <Input
+                        type="email"
+                        value={newGuest.email}
+                        onChange={(e) => setNewGuest({ ...newGuest, email: e.target.value })}
+                        placeholder="john.doe@email.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Phone</Label>
+                      <Input
+                        value={newGuest.phone}
+                        onChange={(e) => setNewGuest({ ...newGuest, phone: e.target.value })}
+                        placeholder="+1 555-0123"
+                      />
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </div>
+
+              {/* Room Selection */}
+              <div className="space-y-2">
+                <Label className="text-base font-semibold">Room</Label>
+                <Select value={selectedRoomId} onValueChange={setSelectedRoomId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a room..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableRooms.map(room => (
+                      <SelectItem key={room.id} value={room.id}>
+                        {room.roomNumber} - {room.name} (${room.price}/night)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Check-in Date *</Label>
+                  <Input
+                    type="date"
+                    value={checkIn}
+                    onChange={(e) => setCheckIn(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Check-out Date *</Label>
+                  <Input
+                    type="date"
+                    value={checkOut}
+                    onChange={(e) => setCheckOut(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Number of Guests */}
+              <div className="space-y-2">
+                <Label>Number of Guests</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={numGuests}
+                  onChange={(e) => setNumGuests(parseInt(e.target.value) || 1)}
+                />
+              </div>
+
+              {/* Source and Status */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Booking Source</Label>
+                  <Select value={source} onValueChange={(v) => setSource(v as BookingSource)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DIRECT">Direct</SelectItem>
+                      <SelectItem value="WEBSITE">Website</SelectItem>
+                      <SelectItem value="BOOKING_COM">Booking.com</SelectItem>
+                      <SelectItem value="EXPEDIA">Expedia</SelectItem>
+                      <SelectItem value="AIRBNB">Airbnb</SelectItem>
+                      <SelectItem value="WALK_IN">Walk-in</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={status} onValueChange={(v) => setStatus(v as ReservationStatus)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PENDING">Pending</SelectItem>
+                      <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Summary */}
+              {selectedRoomId && checkIn && checkOut && calculateNights() > 0 && (
+                <div className="bg-secondary p-4 rounded-lg space-y-2">
+                  <h4 className="font-semibold">Reservation Summary</h4>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Room:</span>
+                    <span>{ROOMS.find(r => r.id === selectedRoomId)?.name}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Nights:</span>
+                    <span>{calculateNights()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold">
+                    <span>Total:</span>
+                    <span>${calculateTotal().toLocaleString()}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4">
+                <Button variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button className="flex-1" onClick={handleCreateReservation}>
+                  Create Reservation
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Stats Cards */}
