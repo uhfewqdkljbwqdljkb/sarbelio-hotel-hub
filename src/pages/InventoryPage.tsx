@@ -10,12 +10,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { INVENTORY_ITEMS, SUPPLIERS, PURCHASE_ORDERS } from '@/data/inventoryMock';
-import { InventoryItem, Supplier, PurchaseOrder, InventoryCategory, OrderTemplate, PurchaseOrderItem } from '@/types/inventory';
+import { InventoryItem, Supplier, PurchaseOrder, InventoryCategory, OrderTemplate, PurchaseOrderItem, ItemDestination } from '@/types/inventory';
 import { Package, Truck, Users, AlertTriangle, Search, Plus, Star, Bell, Edit, Trash2, FileText, Copy } from 'lucide-react';
 
 const categoryLabels: Record<InventoryCategory, string> = {
   FOOD: 'Food', BEVERAGE: 'Beverage', HOUSEKEEPING: 'Housekeeping',
-  LINEN: 'Linen', MAINTENANCE: 'Maintenance', OFFICE: 'Office', AMENITIES: 'Amenities'
+  LINEN: 'Linen', MAINTENANCE: 'Maintenance', OFFICE: 'Office', AMENITIES: 'Amenities',
+  SNACKS: 'Snacks', TOILETRIES: 'Toiletries', SOUVENIRS: 'Souvenirs'
+};
+
+const destinationLabels: Record<ItemDestination, string> = {
+  RESTAURANT: 'Restaurant', MINIMARKET: 'Minimarket', BOTH: 'Both', INTERNAL: 'Internal Use'
+};
+
+const destinationColors: Record<ItemDestination, string> = {
+  RESTAURANT: 'bg-orange-100 text-orange-700',
+  MINIMARKET: 'bg-blue-100 text-blue-700',
+  BOTH: 'bg-purple-100 text-purple-700',
+  INTERNAL: 'bg-gray-100 text-gray-700',
 };
 
 const statusColors = {
@@ -58,7 +70,7 @@ export default function InventoryPage() {
   
   // Form states
   const [newSupplier, setNewSupplier] = useState({ name: '', email: '', phone: '', address: '', categories: [] as InventoryCategory[], rating: 5 });
-  const [newItem, setNewItem] = useState({ name: '', sku: '', category: 'FOOD' as InventoryCategory, quantity: 0, unit: 'pcs', minStock: 10, maxStock: 100, unitCost: 0, location: '' });
+  const [newItem, setNewItem] = useState({ name: '', sku: '', category: 'FOOD' as InventoryCategory, quantity: 0, unit: 'pcs', minStock: 10, maxStock: 100, unitCost: 0, sellPrice: 0, location: '', destination: 'INTERNAL' as ItemDestination });
   const [newTemplate, setNewTemplate] = useState({ name: '', supplierId: '', items: [] as { itemId: string; quantity: number }[] });
   const [newOrder, setNewOrder] = useState({ supplierId: '', templateId: '', items: [] as { itemId: string; quantity: number }[] });
 
@@ -138,12 +150,12 @@ export default function InventoryPage() {
     
     setItemDialogOpen(false);
     setEditingItem(null);
-    setNewItem({ name: '', sku: '', category: 'FOOD', quantity: 0, unit: 'pcs', minStock: 10, maxStock: 100, unitCost: 0, location: '' });
+    setNewItem({ name: '', sku: '', category: 'FOOD', quantity: 0, unit: 'pcs', minStock: 10, maxStock: 100, unitCost: 0, sellPrice: 0, location: '', destination: 'INTERNAL' });
   };
 
   const handleEditItem = (item: InventoryItem) => {
     setEditingItem(item);
-    setNewItem({ name: item.name, sku: item.sku, category: item.category, quantity: item.quantity, unit: item.unit, minStock: item.minStock, maxStock: item.maxStock, unitCost: item.unitCost, location: item.location || '' });
+    setNewItem({ name: item.name, sku: item.sku, category: item.category, quantity: item.quantity, unit: item.unit, minStock: item.minStock, maxStock: item.maxStock, unitCost: item.unitCost, sellPrice: item.sellPrice || 0, location: item.location || '', destination: item.destination });
     setItemDialogOpen(true);
   };
 
@@ -341,7 +353,7 @@ export default function InventoryPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Dialog open={itemDialogOpen} onOpenChange={(open) => { setItemDialogOpen(open); if (!open) { setEditingItem(null); setNewItem({ name: '', sku: '', category: 'FOOD', quantity: 0, unit: 'pcs', minStock: 10, maxStock: 100, unitCost: 0, location: '' }); } }}>
+                <Dialog open={itemDialogOpen} onOpenChange={(open) => { setItemDialogOpen(open); if (!open) { setEditingItem(null); setNewItem({ name: '', sku: '', category: 'FOOD', quantity: 0, unit: 'pcs', minStock: 10, maxStock: 100, unitCost: 0, sellPrice: 0, location: '', destination: 'INTERNAL' }); } }}>
                   <DialogTrigger asChild>
                     <Button className="bg-primary-200 text-primary-900 hover:bg-primary-300"><Plus className="h-4 w-4 mr-2" />Add Item</Button>
                   </DialogTrigger>
@@ -369,6 +381,18 @@ export default function InventoryPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2"><Label>Unit Cost (€)</Label><Input type="number" step="0.01" value={newItem.unitCost} onChange={(e) => setNewItem(p => ({ ...p, unitCost: parseFloat(e.target.value) || 0 }))} /></div>
+                        <div className="space-y-2"><Label>Sell Price (€)</Label><Input type="number" step="0.01" value={newItem.sellPrice} onChange={(e) => setNewItem(p => ({ ...p, sellPrice: parseFloat(e.target.value) || 0 }))} placeholder="For minimarket/restaurant" /></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Destination *</Label>
+                          <Select value={newItem.destination} onValueChange={(v: ItemDestination) => setNewItem(p => ({ ...p, destination: v }))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(destinationLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <div className="space-y-2"><Label>Location</Label><Input value={newItem.location} onChange={(e) => setNewItem(p => ({ ...p, location: e.target.value }))} placeholder="Storage room" /></div>
                       </div>
                       <Button onClick={handleSaveItem} className="w-full bg-primary-200 text-primary-900 hover:bg-primary-300">{editingItem ? 'Update Item' : 'Add Item'}</Button>
@@ -384,8 +408,9 @@ export default function InventoryPage() {
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Item</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">SKU</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Category</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase">Destination</th>
                       <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase">Qty / Min</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Unit Cost</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Cost / Sell</th>
                       <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase">Status</th>
                       <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase">Actions</th>
                     </tr>
@@ -398,11 +423,15 @@ export default function InventoryPage() {
                           <td className="px-4 py-3 font-medium">{item.name}</td>
                           <td className="px-4 py-3 text-muted-foreground text-sm">{item.sku}</td>
                           <td className="px-4 py-3"><Badge variant="outline">{categoryLabels[item.category]}</Badge></td>
+                          <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded-full text-xs font-medium ${destinationColors[item.destination]}`}>{destinationLabels[item.destination]}</span></td>
                           <td className="px-4 py-3 text-center">
                             <span className={status !== 'IN_STOCK' ? 'text-red-600 font-semibold' : ''}>{item.quantity}</span>
                             <span className="text-muted-foreground"> / {item.minStock} {item.unit}</span>
                           </td>
-                          <td className="px-4 py-3 text-right">€{item.unitCost.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right">
+                            <span className="text-muted-foreground">€{item.unitCost.toFixed(2)}</span>
+                            {item.sellPrice && <span className="block font-medium text-green-600">€{item.sellPrice.toFixed(2)}</span>}
+                          </td>
                           <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status]}`}>{status.replace('_', ' ')}</span></td>
                           <td className="px-4 py-3 text-center">
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditItem(item)}><Edit className="h-4 w-4" /></Button>

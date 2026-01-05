@@ -10,6 +10,7 @@ import ReservationsPage from "@/pages/ReservationsPage";
 import RestaurantPage from "@/pages/RestaurantPage";
 import HousekeepingPage from "@/pages/HousekeepingPage";
 import InventoryPage from "@/pages/InventoryPage";
+import MinimarketPage from "@/pages/MinimarketPage";
 import FinancialsPage from "@/pages/FinancialsPage";
 import CRMPage from "@/pages/CRMPage";
 import CalendarPage from "@/pages/CalendarPage";
@@ -38,6 +39,7 @@ const App = () => (
                 <Route path="/reservations" element={<ReservationsPage />} />
                 <Route path="/housekeeping" element={<HousekeepingPage />} />
                 <Route path="/restaurant" element={<RestaurantPage />} />
+                <Route path="/minimarket" element={<MinimarketPage />} />
                 <Route path="/inventory" element={<InventoryPage />} />
                 <Route path="/financials" element={<FinancialsPage />} />
                 <Route path="/crm" element={<CRMPage />} />
