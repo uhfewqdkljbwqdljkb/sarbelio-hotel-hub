@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useGuests } from '@/hooks/useGuests';
 import { Guest } from '@/types';
-import { Users, Search, Crown, Star, Mail, Phone, Calendar, DollarSign, Loader2 } from 'lucide-react';
+import AddGuestDialog from '@/components/guests/AddGuestDialog';
+import { Users, Search, Crown, Star, Mail, Phone, Calendar, DollarSign, Loader2, Plus } from 'lucide-react';
 
 const tierColors = {
   STANDARD: 'bg-gray-100 text-gray-700',
@@ -24,6 +25,7 @@ export default function GuestsPage() {
   const { data: guests = [], isLoading, error } = useGuests();
   const [searchTerm, setSearchTerm] = useState('');
   const [tierFilter, setTierFilter] = useState<string>('all');
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   const totalGuests = guests.length;
   const platinumGuests = guests.filter(g => g.loyaltyTier === 'PLATINUM').length;
@@ -113,13 +115,21 @@ export default function GuestsPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button className="bg-primary-200 text-primary-900 hover:bg-primary-300">Add Guest</Button>
+          <Button onClick={() => setAddDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Guest
+          </Button>
         </div>
 
         {filteredGuests.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
+            <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium">No guests found</p>
             <p className="text-sm">Add your first guest to get started</p>
+            <Button className="mt-4" onClick={() => setAddDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Guest
+            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -168,6 +178,8 @@ export default function GuestsPage() {
           </div>
         )}
       </div>
+
+      <AddGuestDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} />
     </div>
   );
 }

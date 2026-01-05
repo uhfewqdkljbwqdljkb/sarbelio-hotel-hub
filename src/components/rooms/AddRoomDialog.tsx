@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCreateRoom, useRoomTypes } from '@/hooks/useRooms';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -28,7 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload, X, Image } from 'lucide-react';
 
 const roomSchema = z.object({
   roomNumber: z.string().min(1, 'Room number is required'),
@@ -51,6 +52,9 @@ interface AddRoomDialogProps {
 const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => {
   const createRoom = useCreateRoom();
   const { data: roomTypes = [] } = useRoomTypes();
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const form = useForm<RoomFormData>({
     resolver: zodResolver(roomSchema),
@@ -66,8 +70,57 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
     },
   });
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image must be less than 5MB');
+        return;
+      }
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = `rooms/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('room-images')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw uploadError;
+    }
+
+    const { data } = supabase.storage
+      .from('room-images')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  };
+
   const onSubmit = async (data: RoomFormData) => {
     try {
+      setUploading(true);
+      let imageUrl: string | undefined;
+
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile) || undefined;
+      }
+
       await createRoom.mutateAsync({
         roomNumber: data.roomNumber,
         name: data.name,
@@ -80,23 +133,65 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
         amenities: ['WiFi', 'TV', 'Air Conditioning'],
         status: 'AVAILABLE',
         cleaningStatus: 'CLEAN',
+        imageUrl,
       });
       toast.success('Room created successfully');
       form.reset();
+      setImageFile(null);
+      setImagePreview(null);
       onOpenChange(false);
     } catch (error) {
       toast.error('Failed to create room');
+    } finally {
+      setUploading(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Room</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Image Upload */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Room Image (Optional)</label>
+              {imagePreview ? (
+                <div className="relative w-full h-40 rounded-lg overflow-hidden border border-border">
+                  <img 
+                    src={imagePreview} 
+                    alt="Room preview" 
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <Image className="w-8 h-8 mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium text-primary">Click to upload</span> or drag and drop
+                    </p>
+                    <p className="text-xs text-muted-foreground">PNG, JPG up to 5MB</p>
+                  </div>
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/*"
+                    onChange={handleImageChange}
+                  />
+                </label>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -233,8 +328,8 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createRoom.isPending}>
-                {createRoom.isPending && (
+              <Button type="submit" disabled={createRoom.isPending || uploading}>
+                {(createRoom.isPending || uploading) && (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 )}
                 Create Room
