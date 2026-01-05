@@ -1,24 +1,21 @@
 import React, { useState } from 'react';
 import { RestaurantTable, TableStatus } from '@/types/restaurant';
+import { useCreateTable, useUpdateTable, useDeleteTable } from '@/hooks/useRestaurant';
+import { toast } from 'sonner';
 import { 
   Plus, 
   Trash2, 
   Edit2, 
-  Save, 
-  X,
   Users,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react';
 
 interface FloorPlanEditorProps {
   tables: RestaurantTable[];
-  onTablesChange: (tables: RestaurantTable[]) => void;
 }
 
-const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
-  tables,
-  onTablesChange,
-}) => {
+const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({ tables }) => {
   const [editingTable, setEditingTable] = useState<string | null>(null);
   const [showAddTable, setShowAddTable] = useState(false);
   const [newTable, setNewTable] = useState({
@@ -26,51 +23,63 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
     capacity: '4',
   });
 
-  // Add table
-  const handleAddTable = () => {
-    if (!newTable.number.trim()) return;
-    
-    // Check for duplicate table numbers
-    if (tables.some(t => t.number === newTable.number.trim())) {
-      alert('Table number already exists');
+  const createTable = useCreateTable();
+  const updateTable = useUpdateTable();
+  const deleteTable = useDeleteTable();
+
+  const handleAddTable = async () => {
+    if (!newTable.number.trim()) {
+      toast.error('Please enter a table number');
       return;
     }
     
-    const table: RestaurantTable = {
-      id: `t_${Date.now()}`,
-      number: newTable.number.trim(),
-      capacity: parseInt(newTable.capacity) || 4,
-      status: 'AVAILABLE',
-      zone: 'INDOOR', // Single floor
-    };
+    if (tables.some(t => t.number === newTable.number.trim())) {
+      toast.error('Table number already exists');
+      return;
+    }
     
-    onTablesChange([...tables, table]);
-    setNewTable({ number: '', capacity: '4' });
-    setShowAddTable(false);
+    try {
+      await createTable.mutateAsync({
+        number: newTable.number.trim(),
+        capacity: parseInt(newTable.capacity) || 4,
+      });
+      toast.success('Table added successfully');
+      setNewTable({ number: '', capacity: '4' });
+      setShowAddTable(false);
+    } catch (error) {
+      toast.error('Failed to add table');
+    }
   };
 
-  // Delete table
-  const handleDeleteTable = (tableId: string) => {
+  const handleDeleteTable = async (tableId: string) => {
     const table = tables.find(t => t.id === tableId);
     if (table?.status === 'OCCUPIED') {
-      alert('Cannot delete an occupied table');
+      toast.error('Cannot delete an occupied table');
       return;
     }
-    onTablesChange(tables.filter(t => t.id !== tableId));
+    
+    try {
+      await deleteTable.mutateAsync(tableId);
+      toast.success('Table deleted');
+    } catch (error) {
+      toast.error('Failed to delete table');
+    }
   };
 
-  // Update table
-  const handleUpdateTable = (tableId: string, updates: Partial<RestaurantTable>) => {
-    onTablesChange(tables.map(t => 
-      t.id === tableId ? { ...t, ...updates } : t
-    ));
+  const handleUpdateTable = async (tableId: string, updates: Partial<RestaurantTable>) => {
+    try {
+      await updateTable.mutateAsync({ id: tableId, ...updates });
+    } catch (error) {
+      toast.error('Failed to update table');
+    }
   };
 
-  // Set table status
-  const handleSetStatus = (tableId: string, status: TableStatus) => {
-    onTablesChange(tables.map(t => 
-      t.id === tableId ? { ...t, status } : t
-    ));
+  const handleSetStatus = async (tableId: string, status: TableStatus) => {
+    try {
+      await updateTable.mutateAsync({ id: tableId, status });
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
   };
 
   const getStatusColor = (status: TableStatus) => {
@@ -133,8 +142,10 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
             <div className="flex items-end gap-2">
               <button
                 onClick={handleAddTable}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+                disabled={createTable.isPending}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium flex items-center disabled:opacity-50"
               >
+                {createTable.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Add Table
               </button>
               <button
@@ -236,7 +247,7 @@ const FloorPlanEditor: React.FC<FloorPlanEditorProps> = ({
                     </button>
                     <button
                       onClick={() => handleDeleteTable(table.id)}
-                      disabled={table.status === 'OCCUPIED'}
+                      disabled={table.status === 'OCCUPIED' || deleteTable.isPending}
                       className="p-1.5 hover:bg-destructive/10 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       <Trash2 className="w-3.5 h-3.5 text-destructive" />
