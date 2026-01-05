@@ -166,7 +166,6 @@ const RestaurantPage: React.FC = () => {
           ) : (
             <FloorPlanEditor
               tables={tables}
-              onTablesChange={() => {}}
             />
           )}
         </div>

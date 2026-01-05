@@ -272,6 +272,50 @@ export function useUpdateTable() {
   });
 }
 
+export function useCreateTable() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (table: { number: string; capacity: number; zone?: string }) => {
+      const { data, error } = await supabase
+        .from('restaurant_tables')
+        .insert({
+          table_number: table.number,
+          capacity: table.capacity,
+          zone: table.zone || 'INDOOR',
+          status: 'AVAILABLE',
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['restaurant_tables'] });
+    },
+  });
+}
+
+export function useDeleteTable() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('restaurant_tables')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      return { id };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['restaurant_tables'] });
+    },
+  });
+}
+
 // Menu category mutations
 export function useCreateMenuCategory() {
   const queryClient = useQueryClient();
