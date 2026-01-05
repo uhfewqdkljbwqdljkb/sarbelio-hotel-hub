@@ -40,6 +40,8 @@ export interface PurchaseOrder {
   createdAt: string;
   expectedDelivery?: string;
   notes?: string;
+  isTemplate?: boolean;
+  templateName?: string;
 }
 
 export interface PurchaseOrderItem {
@@ -48,4 +50,14 @@ export interface PurchaseOrderItem {
   quantity: number;
   unitCost: number;
   total: number;
+}
+
+export interface OrderTemplate {
+  id: string;
+  name: string;
+  supplierId: string;
+  supplierName: string;
+  items: PurchaseOrderItem[];
+  totalAmount: number;
+  createdAt: string;
 }
