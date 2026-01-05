@@ -1,6 +1,7 @@
-export type InventoryCategory = 'FOOD' | 'BEVERAGE' | 'HOUSEKEEPING' | 'LINEN' | 'MAINTENANCE' | 'OFFICE' | 'AMENITIES';
+export type InventoryCategory = 'FOOD' | 'BEVERAGE' | 'HOUSEKEEPING' | 'LINEN' | 'MAINTENANCE' | 'OFFICE' | 'AMENITIES' | 'SNACKS' | 'TOILETRIES' | 'SOUVENIRS';
 export type StockStatus = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | 'REORDER';
 export type PurchaseOrderStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'ORDERED' | 'RECEIVED' | 'CANCELLED';
+export type ItemDestination = 'RESTAURANT' | 'MINIMARKET' | 'BOTH' | 'INTERNAL';
 
 export interface InventoryItem {
   id: string;
@@ -12,10 +13,14 @@ export interface InventoryItem {
   minStock: number;
   maxStock: number;
   unitCost: number;
+  sellPrice?: number;
   supplier?: string;
   status: StockStatus;
   lastRestocked?: string;
   location?: string;
+  destination: ItemDestination;
+  barcode?: string;
+  imageUrl?: string;
 }
 
 export interface Supplier {

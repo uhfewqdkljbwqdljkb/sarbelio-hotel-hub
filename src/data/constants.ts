@@ -10,7 +10,8 @@ import {
   UserCheck,
   UtensilsCrossed,
   Users,
-  Settings
+  Settings,
+  Store
 } from 'lucide-react';
 import { NavItem } from '@/types';
 
@@ -20,6 +21,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
   { id: 'rooms', label: 'Rooms', path: '/rooms', icon: BedDouble },
   { id: 'housekeeping', label: 'Housekeeping', path: '/housekeeping', icon: SprayCan },
   { id: 'restaurant', label: 'Restaurant', path: '/restaurant', icon: UtensilsCrossed },
+  { id: 'minimarket', label: 'Minimarket', path: '/minimarket', icon: Store },
   { id: 'inventory', label: 'Inventory', path: '/inventory', icon: Box },
   { id: 'financials', label: 'Financials', path: '/financials', icon: DollarSign },
   { id: 'crm', label: 'CRM & Marketing', path: '/crm', icon: Megaphone },
