@@ -271,3 +271,142 @@ export function useUpdateTable() {
     },
   });
 }
+
+// Menu category mutations
+export function useCreateMenuCategory() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (category: { name: string; icon: string }) => {
+      const { data, error } = await supabase
+        .from('menu_categories')
+        .insert({
+          name: category.name,
+          icon: category.icon,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menu_categories'] });
+    },
+  });
+}
+
+export function useUpdateMenuCategory() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, name, icon }: { id: string; name: string; icon: string }) => {
+      const { error } = await supabase
+        .from('menu_categories')
+        .update({ name, icon })
+        .eq('id', id);
+      
+      if (error) throw error;
+      return { id };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menu_categories'] });
+    },
+  });
+}
+
+export function useDeleteMenuCategory() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // First delete all menu items in this category
+      await supabase
+        .from('menu_items')
+        .delete()
+        .eq('category_id', id);
+      
+      const { error } = await supabase
+        .from('menu_categories')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      return { id };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menu_categories'] });
+      queryClient.invalidateQueries({ queryKey: ['menu_items'] });
+    },
+  });
+}
+
+// Menu item mutations
+export function useCreateMenuItem() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (item: { categoryId: string; name: string; description: string; price: number }) => {
+      const { data, error } = await supabase
+        .from('menu_items')
+        .insert({
+          category_id: item.categoryId,
+          name: item.name,
+          description: item.description,
+          price: item.price,
+          is_available: true,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menu_items'] });
+    },
+  });
+}
+
+export function useUpdateMenuItem() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; name?: string; description?: string; price?: number; isAvailable?: boolean }) => {
+      const { error } = await supabase
+        .from('menu_items')
+        .update({
+          name: updates.name,
+          description: updates.description,
+          price: updates.price,
+          is_available: updates.isAvailable,
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+      return { id };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menu_items'] });
+    },
+  });
+}
+
+export function useDeleteMenuItem() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('menu_items')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      return { id };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menu_items'] });
+    },
+  });
+}

@@ -162,8 +162,6 @@ const RestaurantPage: React.FC = () => {
             <MenuManager
               categories={categories}
               menuItems={menuItems}
-              onCategoriesChange={() => {}}
-              onMenuItemsChange={() => {}}
             />
           ) : (
             <FloorPlanEditor
