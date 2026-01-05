@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useRooms } from '@/hooks/useRooms';
-import DashboardCard from '@/components/dashboard/DashboardCard';
+import AddRoomDialog from '@/components/rooms/AddRoomDialog';
 import { 
   Search, 
   Plus, 
@@ -18,6 +18,7 @@ import { RoomStatus, CleaningStatus } from '@/types';
 const RoomsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
   
   const { data: rooms = [], isLoading, error } = useRooms();
 
@@ -71,11 +72,16 @@ const RoomsPage: React.FC = () => {
           <h2 className="text-2xl font-bold text-foreground">Room Inventory</h2>
           <p className="text-muted-foreground">Manage unique rooms, pricing, and availability.</p>
         </div>
-        <button className="px-4 py-2 bg-foreground text-background rounded-lg hover:opacity-90 shadow-lg flex items-center transition-all hover:scale-[1.02]">
+        <button 
+          onClick={() => setAddDialogOpen(true)}
+          className="px-4 py-2 bg-foreground text-background rounded-lg hover:opacity-90 shadow-lg flex items-center transition-all hover:scale-[1.02]"
+        >
           <Plus className="w-5 h-5 mr-2" />
           Add New Room
         </button>
       </div>
+
+      <AddRoomDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} />
 
       {/* Filters Toolbar */}
       <div className="bg-card p-4 rounded-xl shadow-sm border border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
