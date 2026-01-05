@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Search, Settings, LogOut, User } from 'lucide-react';
+import { 
+  Bell, Search, Settings, LogOut, User, LayoutDashboard, CalendarDays, 
+  BedDouble, SprayCan, UtensilsCrossed, Box, DollarSign, Megaphone, 
+  CalendarRange, UserCheck, Users, LucideIcon 
+} from 'lucide-react';
 import { MOCK_USER } from '@/data/constants';
 import {
   DropdownMenu,
@@ -17,15 +21,100 @@ import {
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
+interface SearchItem {
+  id: string;
+  label: string;
+  path: string;
+  icon: LucideIcon;
+  keywords: string[];
+}
+
+const SEARCH_ITEMS: SearchItem[] = [
+  { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, keywords: ['home', 'overview', 'main'] },
+  { id: 'reservations', label: 'Reservations', path: '/reservations', icon: CalendarDays, keywords: ['booking', 'reserve', 'book'] },
+  { id: 'rooms', label: 'Rooms', path: '/rooms', icon: BedDouble, keywords: ['room', 'accommodation', 'bed'] },
+  { id: 'housekeeping', label: 'Housekeeping', path: '/housekeeping', icon: SprayCan, keywords: ['clean', 'cleaning', 'laundry', 'tasks'] },
+  { id: 'restaurant', label: 'Restaurant', path: '/restaurant', icon: UtensilsCrossed, keywords: ['food', 'menu', 'dining', 'pos', 'orders'] },
+  { id: 'inventory', label: 'Inventory', path: '/inventory', icon: Box, keywords: ['stock', 'supplies', 'items'] },
+  { id: 'financials', label: 'Financials', path: '/financials', icon: DollarSign, keywords: ['money', 'finance', 'reports', 'revenue', 'expenses'] },
+  { id: 'crm', label: 'CRM & Marketing', path: '/crm', icon: Megaphone, keywords: ['marketing', 'customer', 'campaign'] },
+  { id: 'calendar', label: 'Calendar', path: '/calendar', icon: CalendarRange, keywords: ['schedule', 'events', 'dates'] },
+  { id: 'concierge', label: 'Concierge', path: '/concierge', icon: UserCheck, keywords: ['service', 'request', 'help'] },
+  { id: 'guests', label: 'Guests', path: '/guests', icon: Users, keywords: ['customer', 'visitor', 'people'] },
+  { id: 'minimarket', label: 'Minimarket', path: '/minimarket', icon: Box, keywords: ['shop', 'store', 'products', 'sales'] },
+  { id: 'settings', label: 'Settings', path: '/settings', icon: Settings, keywords: ['config', 'preferences', 'profile', 'hotel'] },
+];
+
 const Header: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   
   // Format pathname for breadcrumb title
   const title = location.pathname.split('/')[1] || 'Dashboard';
   const formattedTitle = title.charAt(0).toUpperCase() + title.slice(1);
+
+  // Filter search items based on query
+  const filteredItems = searchQuery.trim() 
+    ? SEARCH_ITEMS.filter(item => 
+        item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.keywords.some(kw => kw.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : SEARCH_ITEMS;
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Reset selected index when filtered items change
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [searchQuery]);
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isSearchOpen) return;
+    
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedIndex(prev => (prev + 1) % filteredItems.length);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedIndex(prev => (prev - 1 + filteredItems.length) % filteredItems.length);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (filteredItems[selectedIndex]) {
+          handleNavigate(filteredItems[selectedIndex]);
+        }
+        break;
+      case 'Escape':
+        setIsSearchOpen(false);
+        inputRef.current?.blur();
+        break;
+    }
+  };
+
+  const handleNavigate = (item: SearchItem) => {
+    navigate(item.path);
+    setSearchQuery('');
+    setIsSearchOpen(false);
+    toast.success(`Navigated to ${item.label}`);
+  };
 
   // Mock notifications
   const notifications = [
@@ -36,17 +125,8 @@ const Header: React.FC = () => {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      toast.info(`Searching for "${searchQuery}"...`);
-      // In a real app, this would navigate to a search results page
-    }
-  };
-
   const handleLogout = () => {
     toast.success('Logged out successfully');
-    // In a real app with auth, this would call supabase.auth.signOut()
   };
 
   return (
@@ -58,19 +138,68 @@ const Header: React.FC = () => {
 
       {/* Right Side Actions */}
       <div className="flex items-center space-x-2 md:space-x-6">
-        {/* Search */}
-        <form onSubmit={handleSearch} className="relative hidden md:block">
-          <Input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-64 pl-4 pr-10"
-          />
-          <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2">
-            <Search className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </form>
+        {/* Search with Dropdown */}
+        <div ref={searchRef} className="relative hidden md:block">
+          <div className="relative">
+            <Input
+              ref={inputRef}
+              type="text"
+              placeholder="Search pages..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearchOpen(true)}
+              onKeyDown={handleKeyDown}
+              className="w-64 pl-4 pr-10"
+            />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          </div>
+          
+          {/* Search Dropdown */}
+          {isSearchOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+              {filteredItems.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground text-sm">
+                  No results found
+                </div>
+              ) : (
+                <div className="py-1">
+                  <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Pages
+                  </div>
+                  {filteredItems.map((item, index) => {
+                    const Icon = item.icon;
+                    const isSelected = index === selectedIndex;
+                    const isCurrent = location.pathname === item.path;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleNavigate(item)}
+                        onMouseEnter={() => setSelectedIndex(index)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
+                          isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'
+                        } ${isCurrent ? 'text-primary' : 'text-foreground'}`}
+                      >
+                        <Icon className="w-4 h-4 flex-shrink-0" />
+                        <span className="text-sm">{item.label}</span>
+                        {isCurrent && (
+                          <span className="ml-auto text-xs text-muted-foreground">Current</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
+                <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">↑↓</kbd>
+                <span>Navigate</span>
+                <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] ml-2">↵</kbd>
+                <span>Select</span>
+                <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] ml-2">Esc</kbd>
+                <span>Close</span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Settings */}
         <button 
