@@ -12,7 +12,6 @@ import HousekeepingPage from "@/pages/HousekeepingPage";
 import InventoryPage from "@/pages/InventoryPage";
 import MinimarketPage from "@/pages/MinimarketPage";
 import FinancialsPage from "@/pages/FinancialsPage";
-import CRMPage from "@/pages/CRMPage";
 import CalendarPage from "@/pages/CalendarPage";
 import ConciergePage from "@/pages/ConciergePage";
 import GuestsPage from "@/pages/GuestsPage";
@@ -42,7 +41,6 @@ const App = () => (
                 <Route path="/minimarket" element={<MinimarketPage />} />
                 <Route path="/inventory" element={<InventoryPage />} />
                 <Route path="/financials" element={<FinancialsPage />} />
-                <Route path="/crm" element={<CRMPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/concierge" element={<ConciergePage />} />
                 <Route path="/guests" element={<GuestsPage />} />
