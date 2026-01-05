@@ -335,7 +335,7 @@ const POSInterface: React.FC<POSInterfaceProps> = ({
             onClick={() => setMobileCartOpen(false)}
           />
           {/* Panel */}
-          <div className="absolute bottom-0 left-0 right-0 h-[85vh] bg-card rounded-t-2xl shadow-xl animate-in slide-in-from-bottom duration-300">
+          <div className="absolute bottom-0 left-0 right-0 h-[85vh] bg-card rounded-t-2xl shadow-xl animate-in slide-in-from-bottom duration-300 pb-[30px]">
             <div className="w-12 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3" />
             <OrderPanel isMobile />
           </div>
