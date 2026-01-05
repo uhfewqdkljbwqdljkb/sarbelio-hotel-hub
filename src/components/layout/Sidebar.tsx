@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { NAVIGATION_ITEMS } from '@/data/constants';
-import { Hotel, Menu, X } from 'lucide-react';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Hotel } from 'lucide-react';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onMobileOpenChange?: (open: boolean) => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onMobileOpenChange }) => {
   const location = useLocation();
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   const NavContent = () => (
     <>
@@ -28,7 +32,7 @@ const Sidebar: React.FC = () => {
             <Link
               key={item.id}
               to={item.path}
-              onClick={() => setMobileOpen(false)}
+              onClick={() => onMobileOpenChange?.(false)}
               className={`flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group ${
                 isActive 
                   ? 'bg-primary-200 text-primary-900' 
@@ -67,16 +71,8 @@ const Sidebar: React.FC = () => {
         <NavContent />
       </div>
 
-      {/* Mobile Menu Button - Fixed at bottom left */}
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetTrigger asChild>
-          <button
-            className="md:hidden fixed bottom-6 left-6 z-50 p-3 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-colors"
-            aria-label="Open navigation menu"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-        </SheetTrigger>
+      {/* Mobile Sidebar Sheet */}
+      <Sheet open={mobileOpen} onOpenChange={onMobileOpenChange}>
         <SheetContent side="left" className="p-0 w-72">
           <div className="flex flex-col h-full bg-card">
             <NavContent />
