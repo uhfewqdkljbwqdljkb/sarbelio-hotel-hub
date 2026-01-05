@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { NAVIGATION_ITEMS } from '@/data/constants';
-import { Hotel } from 'lucide-react';
+import { Hotel, Menu, X } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  return (
-    <div className="hidden md:flex flex-col w-64 bg-card border-r border-border">
+  const NavContent = () => (
+    <>
       {/* Logo Area */}
       <div className="flex items-center h-16 px-6 border-b border-border">
         <div className="p-1.5 bg-primary-200 rounded-lg mr-3">
@@ -26,6 +28,7 @@ const Sidebar: React.FC = () => {
             <Link
               key={item.id}
               to={item.path}
+              onClick={() => setMobileOpen(false)}
               className={`flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group ${
                 isActive 
                   ? 'bg-primary-200 text-primary-900' 
@@ -54,7 +57,33 @@ const Sidebar: React.FC = () => {
           © 2024 Sarbelio Inc.
         </div>
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <div className="hidden md:flex flex-col w-64 bg-card border-r border-border">
+        <NavContent />
+      </div>
+
+      {/* Mobile Menu Button - Fixed at bottom left */}
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetTrigger asChild>
+          <button
+            className="md:hidden fixed bottom-6 left-6 z-50 p-3 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-colors"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </SheetTrigger>
+        <SheetContent side="left" className="p-0 w-72">
+          <div className="flex flex-col h-full bg-card">
+            <NavContent />
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 };
 
