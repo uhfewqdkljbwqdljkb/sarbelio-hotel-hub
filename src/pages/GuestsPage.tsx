@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { GUESTS } from '@/data/mockData';
+import { useGuests } from '@/hooks/useGuests';
 import { Guest } from '@/types';
-import { Users, Search, Crown, Star, Mail, Phone, Calendar, DollarSign } from 'lucide-react';
+import { Users, Search, Crown, Star, Mail, Phone, Calendar, DollarSign, Loader2 } from 'lucide-react';
 
 const tierColors = {
   STANDARD: 'bg-gray-100 text-gray-700',
@@ -22,20 +21,36 @@ const tierIcons = {
 };
 
 export default function GuestsPage() {
-  const [guests] = useState<Guest[]>(GUESTS);
+  const { data: guests = [], isLoading, error } = useGuests();
   const [searchTerm, setSearchTerm] = useState('');
   const [tierFilter, setTierFilter] = useState<string>('all');
 
   const totalGuests = guests.length;
   const platinumGuests = guests.filter(g => g.loyaltyTier === 'PLATINUM').length;
   const totalRevenue = guests.reduce((sum, g) => sum + g.totalSpent, 0);
-  const avgStays = (guests.reduce((sum, g) => sum + g.totalStays, 0) / guests.length).toFixed(1);
+  const avgStays = guests.length > 0 ? (guests.reduce((sum, g) => sum + g.totalStays, 0) / guests.length).toFixed(1) : '0';
 
   const filteredGuests = guests.filter(guest => {
     const matchesSearch = `${guest.firstName} ${guest.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || guest.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTier = tierFilter === 'all' || guest.loyaltyTier === tierFilter;
     return matchesSearch && matchesTier;
   });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12 text-red-500">
+        Error loading guests: {error.message}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -101,53 +116,56 @@ export default function GuestsPage() {
           <Button className="bg-primary-200 text-primary-900 hover:bg-primary-300">Add Guest</Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredGuests.map((guest) => {
-            const TierIcon = tierIcons[guest.loyaltyTier];
-            return (
-              <div key={guest.id} className="border rounded-lg p-4 hover:shadow-sm transition-shadow">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold">{guest.firstName} {guest.lastName}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${tierColors[guest.loyaltyTier]}`}>
-                        {TierIcon && <TierIcon className="h-3 w-3" />}
-                        {guest.loyaltyTier}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{guest.loyaltyPoints.toLocaleString()} pts</span>
+        {filteredGuests.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <p className="text-lg font-medium">No guests found</p>
+            <p className="text-sm">Add your first guest to get started</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredGuests.map((guest) => {
+              const TierIcon = tierIcons[guest.loyaltyTier];
+              return (
+                <div key={guest.id} className="border rounded-lg p-4 hover:shadow-sm transition-shadow">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold">{guest.firstName} {guest.lastName}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${tierColors[guest.loyaltyTier]}`}>
+                          {TierIcon && <TierIcon className="h-3 w-3" />}
+                          {guest.loyaltyTier}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{guest.loyaltyPoints.toLocaleString()} pts</span>
+                      </div>
                     </div>
+                    <Button variant="ghost" size="sm">View</Button>
                   </div>
-                  <Button variant="ghost" size="sm">View</Button>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Mail className="h-4 w-4" />
-                    <span className="truncate">{guest.email}</span>
-                  </div>
-                  {guest.phone && (
+                  <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <Phone className="h-4 w-4" />
-                      <span>{guest.phone}</span>
+                      <Mail className="h-4 w-4" />
+                      <span className="truncate">{guest.email}</span>
                     </div>
-                  )}
-                </div>
-                <div className="flex items-center justify-between mt-4 pt-3 border-t text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Total Spent</span>
-                    <p className="font-semibold text-green-600">€{guest.totalSpent.toLocaleString()}</p>
+                    {guest.phone && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Phone className="h-4 w-4" />
+                        <span>{guest.phone}</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right">
-                    <span className="text-muted-foreground">Stays</span>
-                    <p className="font-semibold">{guest.totalStays}</p>
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Total Spent</span>
+                      <p className="font-semibold text-green-600">€{guest.totalSpent.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-muted-foreground">Stays</span>
+                      <p className="font-semibold">{guest.totalStays}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {filteredGuests.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">No guests match your search</div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
