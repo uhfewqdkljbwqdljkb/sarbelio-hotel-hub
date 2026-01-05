@@ -12,6 +12,7 @@ import { INVENTORY_ITEMS } from '@/data/inventoryMock';
 import { MINIMARKET_SALES, MinimarketSale, MinimarketSaleItem } from '@/data/minimarketMock';
 import { InventoryItem } from '@/types/inventory';
 import { ShoppingCart, Package, CreditCard, Banknote, Building, Search, Plus, Minus, Trash2, Receipt, TrendingUp, ShoppingBag } from 'lucide-react';
+import { useRooms } from '@/hooks/useRooms';
 
 const categoryLabels: Record<string, string> = {
   SNACKS: 'Snacks', BEVERAGE: 'Beverages', TOILETRIES: 'Toiletries',
@@ -19,6 +20,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 export default function MinimarketPage() {
+  const { data: rooms = [] } = useRooms();
   const [inventory, setInventory] = useState<InventoryItem[]>(
     INVENTORY_ITEMS.filter(i => i.destination === 'MINIMARKET' || i.destination === 'BOTH')
   );
@@ -30,6 +32,9 @@ export default function MinimarketPage() {
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'ROOM_CHARGE'>('CASH');
   const [roomNumber, setRoomNumber] = useState('');
   const [activeTab, setActiveTab] = useState('pos');
+
+  // Filter rooms that are occupied (guests can charge to room)
+  const occupiedRooms = rooms.filter(r => r.status === 'OCCUPIED');
 
   // Stats
   const todaySales = sales.filter(s => new Date(s.createdAt).toDateString() === new Date().toDateString());
@@ -366,8 +371,36 @@ export default function MinimarketPage() {
 
             {paymentMethod === 'ROOM_CHARGE' && (
               <div className="space-y-2">
-                <Label>Room Number *</Label>
-                <Input value={roomNumber} onChange={(e) => setRoomNumber(e.target.value)} placeholder="e.g., 205" />
+                <Label>Select Room *</Label>
+                <Select value={roomNumber} onValueChange={setRoomNumber}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a room" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {occupiedRooms.length === 0 ? (
+                      <SelectItem value="" disabled>No occupied rooms</SelectItem>
+                    ) : (
+                      occupiedRooms.map(room => (
+                        <SelectItem key={room.id} value={room.roomNumber}>
+                          Room {room.roomNumber} - {room.name}
+                        </SelectItem>
+                      ))
+                    )}
+                    {rooms.filter(r => r.status !== 'OCCUPIED').length > 0 && (
+                      <>
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1">Other Rooms</div>
+                        {rooms.filter(r => r.status !== 'OCCUPIED').map(room => (
+                          <SelectItem key={room.id} value={room.roomNumber}>
+                            Room {room.roomNumber} - {room.name} ({room.status})
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+                {occupiedRooms.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No guests currently checked in. All rooms shown.</p>
+                )}
               </div>
             )}
 
