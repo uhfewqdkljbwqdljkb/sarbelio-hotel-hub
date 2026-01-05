@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { TABLES, INITIAL_ORDERS, MENU_CATEGORIES, MENU_ITEMS } from '@/data/restaurantMock';
+import React, { useState } from 'react';
+import { useRestaurantTables, usePosOrders, useMenuCategories, useMenuItems, useCreateOrder, useUpdateOrder, useUpdateTable } from '@/hooks/useRestaurant';
 import { RestaurantTable, POSOrder, MenuCategory, MenuItem } from '@/types/restaurant';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import TableGrid from '@/components/restaurant/TableGrid';
@@ -15,7 +15,8 @@ import {
   LayoutGrid,
   List,
   Settings,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 
 type ViewMode = 'FLOOR' | 'POS' | 'ORDERS' | 'SETTINGS';
@@ -25,10 +26,17 @@ const RestaurantPage: React.FC = () => {
   const [view, setView] = useState<ViewMode>('FLOOR');
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('MENU');
   const [activeTable, setActiveTable] = useState<RestaurantTable | null>(null);
-  const [orders, setOrders] = useState<POSOrder[]>(INITIAL_ORDERS);
-  const [tables, setTables] = useState<RestaurantTable[]>(TABLES);
-  const [categories, setCategories] = useState<MenuCategory[]>(MENU_CATEGORIES);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(MENU_ITEMS);
+  
+  const { data: tables = [], isLoading: tablesLoading } = useRestaurantTables();
+  const { data: orders = [], isLoading: ordersLoading } = usePosOrders();
+  const { data: categories = [], isLoading: categoriesLoading } = useMenuCategories();
+  const { data: menuItems = [], isLoading: menuItemsLoading } = useMenuItems();
+  
+  const createOrder = useCreateOrder();
+  const updateOrder = useUpdateOrder();
+  const updateTable = useUpdateTable();
+
+  const isLoading = tablesLoading || ordersLoading || categoriesLoading || menuItemsLoading;
 
   // KPIs
   const activeOrdersCount = orders.filter(o => o.status !== 'PAID').length;
@@ -49,32 +57,42 @@ const RestaurantPage: React.FC = () => {
     }
   };
 
-  const handleSaveOrder = (updatedOrder: POSOrder) => {
-    setOrders(prev => {
-      const existingIdx = prev.findIndex(o => o.id === updatedOrder.id);
-      if (existingIdx >= 0) {
-        const newOrders = [...prev];
-        newOrders[existingIdx] = updatedOrder;
-        return newOrders;
+  const handleSaveOrder = async (updatedOrder: POSOrder) => {
+    try {
+      if (orders.find(o => o.id === updatedOrder.id)) {
+        await updateOrder.mutateAsync({
+          id: updatedOrder.id,
+          status: updatedOrder.status,
+          totalAmount: updatedOrder.totalAmount,
+          guestCount: updatedOrder.guestCount,
+          tableId: updatedOrder.tableId,
+        });
+      } else {
+        await createOrder.mutateAsync({
+          tableId: updatedOrder.tableId,
+          tableNumber: updatedOrder.tableNumber,
+          status: updatedOrder.status,
+          totalAmount: updatedOrder.totalAmount,
+          guestCount: updatedOrder.guestCount || 1,
+          openedAt: updatedOrder.openedAt,
+          items: updatedOrder.items,
+        });
       }
-      return [...prev, updatedOrder];
-    });
-    
-    // Update table status based on order
-    setTables(prev => prev.map(t => {
-      if (t.id === updatedOrder.tableId) {
-        if (updatedOrder.status === 'PAID') {
-          return { ...t, status: 'CLEANING' as const, currentOrderId: undefined };
-        } else {
-          return { ...t, status: 'OCCUPIED' as const, currentOrderId: updatedOrder.id };
-        }
-      }
-      return t;
-    }));
+    } catch (error) {
+      console.error('Failed to save order:', error);
+    }
 
     setView('FLOOR');
     setActiveTable(null);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   // Show POS interface when a table is selected
   if (view === 'POS' && activeTable) {
@@ -144,13 +162,13 @@ const RestaurantPage: React.FC = () => {
             <MenuManager
               categories={categories}
               menuItems={menuItems}
-              onCategoriesChange={setCategories}
-              onMenuItemsChange={setMenuItems}
+              onCategoriesChange={() => {}}
+              onMenuItemsChange={() => {}}
             />
           ) : (
             <FloorPlanEditor
               tables={tables}
-              onTablesChange={setTables}
+              onTablesChange={() => {}}
             />
           )}
         </div>
@@ -246,7 +264,13 @@ const RestaurantPage: React.FC = () => {
 
       {/* Main Content */}
       <div className="bg-card rounded-xl shadow-sm border border-border p-6">
-        {view === 'FLOOR' ? (
+        {tables.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <UtensilsCrossed className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p className="text-lg font-medium">No tables configured</p>
+            <p className="text-sm">Go to Settings to add restaurant tables</p>
+          </div>
+        ) : view === 'FLOOR' ? (
           <TableGrid 
             tables={tables} 
             orders={orders} 

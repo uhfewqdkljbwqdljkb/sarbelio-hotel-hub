@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { RESERVATIONS, ROOMS, GUESTS } from '@/data/mockData';
+import { useReservations, useCreateReservation } from '@/hooks/useReservations';
+import { useRooms } from '@/hooks/useRooms';
+import { useGuests, useCreateGuest } from '@/hooks/useGuests';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import { 
   Search, 
@@ -9,7 +11,8 @@ import {
   MoreVertical,
   ArrowUpDown,
   UserPlus,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { ReservationStatus, BookingSource, Reservation, Guest } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -24,10 +27,14 @@ import { differenceInDays, format } from 'date-fns';
 const ReservationsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
-  const [reservations, setReservations] = useState<Reservation[]>(RESERVATIONS);
-  const [guests, setGuests] = useState<Guest[]>(GUESTS);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [guestMode, setGuestMode] = useState<'existing' | 'new'>('existing');
+  
+  const { data: reservations = [], isLoading: reservationsLoading } = useReservations();
+  const { data: rooms = [], isLoading: roomsLoading } = useRooms();
+  const { data: guests = [], isLoading: guestsLoading } = useGuests();
+  const createReservation = useCreateReservation();
+  const createGuest = useCreateGuest();
   
   // Form state for new reservation
   const [selectedGuestId, setSelectedGuestId] = useState('');
@@ -44,7 +51,7 @@ const ReservationsPage: React.FC = () => {
   const [source, setSource] = useState<BookingSource>('DIRECT');
   const [status, setStatus] = useState<ReservationStatus>('PENDING');
 
-  const availableRooms = ROOMS.filter(room => 
+  const availableRooms = rooms.filter(room => 
     room.status === 'AVAILABLE' || room.status === 'RESERVED'
   );
 
@@ -55,13 +62,9 @@ const ReservationsPage: React.FC = () => {
   };
 
   const calculateTotal = () => {
-    const room = ROOMS.find(r => r.id === selectedRoomId);
+    const room = rooms.find(r => r.id === selectedRoomId);
     if (!room) return 0;
     return room.price * calculateNights();
-  };
-
-  const generateConfirmationCode = () => {
-    return `CNF-${Math.floor(10000 + Math.random() * 90000)}`;
   };
 
   const resetForm = () => {
@@ -76,7 +79,7 @@ const ReservationsPage: React.FC = () => {
     setGuestMode('existing');
   };
 
-  const handleCreateReservation = () => {
+  const handleCreateReservation = async () => {
     // Validation
     if (guestMode === 'existing' && !selectedGuestId) {
       toast.error('Please select a guest');
@@ -99,58 +102,52 @@ const ReservationsPage: React.FC = () => {
       return;
     }
 
-    // Get or create guest
-    let guestName = '';
-    let guestEmail = '';
-    
-    if (guestMode === 'existing') {
-      const guest = guests.find(g => g.id === selectedGuestId);
-      if (guest) {
-        guestName = `${guest.firstName} ${guest.lastName}`;
-        guestEmail = guest.email;
+    try {
+      // Get or create guest
+      let guestName = '';
+      let guestEmail = '';
+      
+      if (guestMode === 'existing') {
+        const guest = guests.find(g => g.id === selectedGuestId);
+        if (guest) {
+          guestName = `${guest.firstName} ${guest.lastName}`;
+          guestEmail = guest.email;
+        }
+      } else {
+        // Create new guest
+        const createdGuest = await createGuest.mutateAsync({
+          firstName: newGuest.firstName,
+          lastName: newGuest.lastName,
+          email: newGuest.email,
+          phone: newGuest.phone,
+        });
+        guestName = `${newGuest.firstName} ${newGuest.lastName}`;
+        guestEmail = newGuest.email;
       }
-    } else {
-      // Create new guest
-      const newGuestId = `gst_${Date.now()}`;
-      const createdGuest: Guest = {
-        id: newGuestId,
-        firstName: newGuest.firstName,
-        lastName: newGuest.lastName,
-        email: newGuest.email,
-        phone: newGuest.phone,
-        loyaltyTier: 'STANDARD',
-        loyaltyPoints: 0,
-        totalSpent: 0,
-        totalStays: 0
-      };
-      setGuests([...guests, createdGuest]);
-      guestName = `${newGuest.firstName} ${newGuest.lastName}`;
-      guestEmail = newGuest.email;
+
+      const room = rooms.find(r => r.id === selectedRoomId);
+      
+      await createReservation.mutateAsync({
+        guestName,
+        guestEmail,
+        roomId: selectedRoomId,
+        roomName: room?.name,
+        checkIn,
+        checkOut,
+        nights: calculateNights(),
+        guests: numGuests,
+        totalAmount: calculateTotal(),
+        status,
+        source,
+      });
+
+      toast.success('Reservation created successfully!');
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      toast.error('Failed to create reservation');
+      console.error(error);
     }
-
-    const room = ROOMS.find(r => r.id === selectedRoomId);
-    
-    const newReservation: Reservation = {
-      id: `res_${Date.now()}`,
-      confirmationCode: generateConfirmationCode(),
-      guestName,
-      guestEmail,
-      roomId: selectedRoomId,
-      roomName: room?.name,
-      checkIn,
-      checkOut,
-      nights: calculateNights(),
-      guests: numGuests,
-      totalAmount: calculateTotal(),
-      status,
-      source,
-      createdAt: format(new Date(), 'yyyy-MM-dd')
-    };
-
-    setReservations([newReservation, ...reservations]);
-    toast.success(`Reservation ${newReservation.confirmationCode} created successfully!`);
-    setIsDialogOpen(false);
-    resetForm();
   };
 
   const filteredReservations = reservations.filter(res => {
@@ -189,6 +186,16 @@ const ReservationsPage: React.FC = () => {
   const confirmedBookings = reservations.filter(r => r.status === 'CONFIRMED').length;
   const pendingBookings = reservations.filter(r => r.status === 'PENDING').length;
   const totalRevenue = reservations.reduce((sum, r) => sum + r.totalAmount, 0);
+
+  const isLoading = reservationsLoading || roomsLoading || guestsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -233,6 +240,9 @@ const ReservationsPage: React.FC = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {guests.length === 0 && (
+                      <p className="text-sm text-muted-foreground mt-2">No guests found. Create a new guest.</p>
+                    )}
                   </TabsContent>
                   
                   <TabsContent value="new" className="mt-4 space-y-4">
@@ -290,6 +300,9 @@ const ReservationsPage: React.FC = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                {availableRooms.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No rooms available. Add rooms first.</p>
+                )}
               </div>
 
               {/* Dates */}
@@ -361,7 +374,7 @@ const ReservationsPage: React.FC = () => {
                   <h4 className="font-semibold">Reservation Summary</h4>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Room:</span>
-                    <span>{ROOMS.find(r => r.id === selectedRoomId)?.name}</span>
+                    <span>{rooms.find(r => r.id === selectedRoomId)?.name}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Nights:</span>
@@ -379,7 +392,14 @@ const ReservationsPage: React.FC = () => {
                 <Button variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button className="flex-1" onClick={handleCreateReservation}>
+                <Button 
+                  className="flex-1" 
+                  onClick={handleCreateReservation}
+                  disabled={createReservation.isPending}
+                >
+                  {createReservation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : null}
                   Create Reservation
                 </Button>
               </div>
@@ -442,14 +462,14 @@ const ReservationsPage: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-          {['ALL', 'CONFIRMED', 'PENDING', 'CHECKED_IN', 'CHECKED_OUT', 'CANCELLED'].map(status => (
+          {['ALL', 'PENDING', 'CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT'].map(status => (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
-              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors border ${
+              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
                 filterStatus === status 
-                  ? 'bg-foreground text-background border-foreground' 
-                  : 'bg-card text-muted-foreground border-border hover:bg-secondary'
+                  ? 'bg-foreground text-background' 
+                  : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
               }`}
             >
               {status.replace(/_/g, ' ')}
@@ -459,96 +479,66 @@ const ReservationsPage: React.FC = () => {
       </div>
 
       {/* Reservations Table */}
-      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-secondary">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  <div className="flex items-center cursor-pointer hover:text-foreground">
-                    Confirmation <ArrowUpDown className="w-3 h-3 ml-1" />
-                  </div>
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Guest
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Room
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Dates
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Source
-                </th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filteredReservations.map((reservation) => (
-                <tr key={reservation.id} className="hover:bg-secondary/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <span className="font-mono text-sm font-bold text-foreground">
-                      {reservation.confirmationCode}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="font-medium text-foreground">{reservation.guestName}</p>
-                      <p className="text-xs text-muted-foreground flex items-center mt-0.5">
-                        <Mail className="w-3 h-3 mr-1" />
-                        {reservation.guestEmail}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-foreground">
-                      {reservation.roomName || 'Unassigned'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm">
-                      <p className="text-foreground">{reservation.checkIn}</p>
-                      <p className="text-muted-foreground">to {reservation.checkOut}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {reservation.nights} night{reservation.nights > 1 ? 's' : ''} • {reservation.guests} guest{reservation.guests > 1 ? 's' : ''}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${getStatusColor(reservation.status)}`}>
-                      {reservation.status.replace(/_/g, ' ')}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${getSourceBadge(reservation.source)}`}>
-                      {reservation.source.replace(/_/g, '.')}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="text-lg font-bold text-foreground">
-                      ${reservation.totalAmount.toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <button className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-foreground">
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {filteredReservations.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground bg-card rounded-xl border">
+          <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p className="text-lg font-medium">No reservations found</p>
+          <p className="text-sm">Create your first reservation to get started</p>
         </div>
-      </div>
+      ) : (
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-secondary/50">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Guest</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Room</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Dates</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Source</th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-4"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredReservations.map((res) => (
+                  <tr key={res.id} className="hover:bg-secondary/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="font-medium text-foreground">{res.guestName}</div>
+                        <div className="text-xs text-muted-foreground">{res.confirmationCode}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{res.roomName || 'Unassigned'}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                      {format(new Date(res.checkIn), 'MMM d')} - {format(new Date(res.checkOut), 'MMM d, yyyy')}
+                      <div className="text-xs">{res.nights} nights</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(res.status)}`}>
+                        {res.status.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded text-xs ${getSourceBadge(res.source)}`}>
+                        {res.source.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right font-semibold text-foreground">
+                      ${res.totalAmount.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

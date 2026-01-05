@@ -3,138 +3,114 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RoomBoard } from '@/components/housekeeping/RoomBoard';
 import { TaskList } from '@/components/housekeeping/TaskList';
 import { LaundryTracker } from '@/components/housekeeping/LaundryTracker';
-import { 
-  HOUSEKEEPING_STAFF, 
-  HOUSEKEEPING_TASKS, 
-  LAUNDRY_INVENTORY, 
-  ROOM_CLEANING_STATUS 
-} from '@/data/housekeepingMock';
+import { useRooms, useUpdateRoom } from '@/hooks/useRooms';
+import { useHousekeepingTasks, useLaundryItems, useCreateHousekeepingTask, useUpdateHousekeepingTask } from '@/hooks/useHousekeeping';
 import { HousekeepingTask, LaundryItem, RoomCleaningStatus, HousekeepingStaff } from '@/types/housekeeping';
-import { BedDouble, ClipboardList, Shirt, Users } from 'lucide-react';
+import { BedDouble, ClipboardList, Shirt, Users, Loader2 } from 'lucide-react';
+
+// Mock staff for now - will be moved to database later
+const MOCK_STAFF: HousekeepingStaff[] = [
+  { id: 'staff1', name: 'Maria Garcia', status: 'AVAILABLE', currentTasks: 0, completedToday: 3 },
+  { id: 'staff2', name: 'Ana Rodriguez', status: 'AVAILABLE', currentTasks: 0, completedToday: 2 },
+  { id: 'staff3', name: 'Carlos Martinez', status: 'AVAILABLE', currentTasks: 0, completedToday: 1 },
+];
 
 export default function HousekeepingPage() {
-  const [rooms, setRooms] = useState<RoomCleaningStatus[]>(ROOM_CLEANING_STATUS);
-  const [tasks, setTasks] = useState<HousekeepingTask[]>(HOUSEKEEPING_TASKS);
-  const [laundry, setLaundry] = useState<LaundryItem[]>(LAUNDRY_INVENTORY);
-  const [staff, setStaff] = useState<HousekeepingStaff[]>(HOUSEKEEPING_STAFF);
+  const { data: rooms = [], isLoading: roomsLoading } = useRooms();
+  const { data: tasks = [], isLoading: tasksLoading } = useHousekeepingTasks();
+  const { data: laundry = [], isLoading: laundryLoading } = useLaundryItems();
+  const updateRoom = useUpdateRoom();
+  const createTask = useCreateHousekeepingTask();
+  const updateTask = useUpdateHousekeepingTask();
+  
+  const [staff] = useState<HousekeepingStaff[]>(MOCK_STAFF);
+
+  const isLoading = roomsLoading || tasksLoading || laundryLoading;
+
+  // Convert rooms to RoomCleaningStatus format
+  const roomCleaningStatus: RoomCleaningStatus[] = rooms.map(room => ({
+    roomId: room.id,
+    roomNumber: room.roomNumber,
+    floor: room.floor,
+    cleaningStatus: room.cleaningStatus,
+    roomStatus: room.status,
+    priority: 'MEDIUM' as const,
+    lastCleaned: undefined,
+    assignedTo: undefined,
+  }));
 
   // Stats
-  const dirtyRooms = rooms.filter(r => r.cleaningStatus === 'DIRTY').length;
-  const inProgressRooms = rooms.filter(r => r.cleaningStatus === 'IN_PROGRESS').length;
+  const dirtyRooms = roomCleaningStatus.filter(r => r.cleaningStatus === 'DIRTY').length;
+  const inProgressRooms = roomCleaningStatus.filter(r => r.cleaningStatus === 'IN_PROGRESS').length;
   const pendingTasks = tasks.filter(t => t.status === 'PENDING').length;
   const lowStockItems = laundry.filter(l => l.inStock < l.minStock).length;
   const availableStaff = staff.filter(s => s.status === 'AVAILABLE').length;
 
-  const handleAssignStaff = (roomId: string, staffId: string) => {
+  const handleAssignStaff = async (roomId: string, staffId: string) => {
     const staffMember = staff.find(s => s.id === staffId);
     if (!staffMember) return;
 
-    setRooms(prev => prev.map(room => 
-      room.roomId === roomId 
-        ? { ...room, cleaningStatus: 'IN_PROGRESS' as const, assignedTo: staffMember.name }
-        : room
-    ));
+    const room = roomCleaningStatus.find(r => r.roomId === roomId);
+    if (!room) return;
 
-    setStaff(prev => prev.map(s =>
-      s.id === staffId
-        ? { ...s, currentTasks: s.currentTasks + 1, status: 'BUSY' as const }
-        : s
-    ));
+    try {
+      await updateRoom.mutateAsync({
+        id: roomId,
+        cleaningStatus: 'IN_PROGRESS',
+      });
 
-    // Create a task for this assignment
-    const room = rooms.find(r => r.roomId === roomId);
-    if (room) {
-      const newTask: HousekeepingTask = {
-        id: `ht_${Date.now()}`,
-        roomNumber: room.roomNumber,
+      await createTask.mutateAsync({
         roomId: room.roomId,
+        roomNumber: room.roomNumber,
         taskType: 'CHECKOUT_CLEAN',
         priority: room.priority,
         status: 'IN_PROGRESS',
         assignedTo: staffMember.name,
-        assignedToId: staffId,
-        createdAt: new Date().toISOString(),
-        estimatedMinutes: 45,
-      };
-      setTasks(prev => [...prev, newTask]);
+      });
+    } catch (error) {
+      console.error('Failed to assign staff:', error);
     }
   };
 
-  const handleUpdateRoomStatus = (roomId: string, status: RoomCleaningStatus['cleaningStatus']) => {
-    setRooms(prev => prev.map(room => {
-      if (room.roomId !== roomId) return room;
-      
-      const updates: Partial<RoomCleaningStatus> = { cleaningStatus: status };
-      
-      if (status === 'CLEAN' || status === 'INSPECTED') {
-        updates.lastCleaned = new Date().toISOString();
-        updates.assignedTo = undefined;
-        
-        // Update staff member
-        if (room.assignedTo) {
-          setStaff(prev => prev.map(s =>
-            s.name === room.assignedTo
-              ? { ...s, currentTasks: Math.max(0, s.currentTasks - 1), completedToday: s.completedToday + 1 }
-              : s
-          ));
-        }
-      }
-      
-      return { ...room, ...updates };
-    }));
-  };
-
-  const handleAddTask = (taskData: Omit<HousekeepingTask, 'id' | 'createdAt'>) => {
-    const newTask: HousekeepingTask = {
-      ...taskData,
-      id: `ht_${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-    setTasks(prev => [...prev, newTask]);
-
-    // Update staff if assigned
-    if (taskData.assignedToId) {
-      setStaff(prev => prev.map(s =>
-        s.id === taskData.assignedToId
-          ? { ...s, currentTasks: s.currentTasks + 1, status: 'BUSY' as const }
-          : s
-      ));
+  const handleUpdateRoomStatus = async (roomId: string, status: RoomCleaningStatus['cleaningStatus']) => {
+    try {
+      await updateRoom.mutateAsync({
+        id: roomId,
+        cleaningStatus: status,
+      });
+    } catch (error) {
+      console.error('Failed to update room status:', error);
     }
   };
 
-  const handleUpdateTask = (taskId: string, updates: Partial<HousekeepingTask>) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id !== taskId) return task;
-      
-      const updatedTask = { ...task, ...updates };
-      
-      // Update room status if task completed
-      if (updates.status === 'COMPLETED' && task.status !== 'COMPLETED') {
-        setRooms(prev => prev.map(room =>
-          room.roomId === task.roomId
-            ? { ...room, cleaningStatus: 'CLEAN' as const, lastCleaned: new Date().toISOString() }
-            : room
-        ));
-      }
-      
-      // Update staff stats
-      if (updates.status === 'COMPLETED' && task.assignedToId) {
-        setStaff(prev => prev.map(s =>
-          s.id === task.assignedToId
-            ? { ...s, currentTasks: Math.max(0, s.currentTasks - 1), completedToday: s.completedToday + 1 }
-            : s
-        ));
-      }
-      
-      return updatedTask;
-    }));
+  const handleAddTask = async (taskData: Omit<HousekeepingTask, 'id' | 'createdAt'>) => {
+    try {
+      await createTask.mutateAsync(taskData);
+    } catch (error) {
+      console.error('Failed to add task:', error);
+    }
+  };
+
+  const handleUpdateTask = async (taskId: string, updates: Partial<HousekeepingTask>) => {
+    try {
+      await updateTask.mutateAsync({ id: taskId, ...updates });
+    } catch (error) {
+      console.error('Failed to update task:', error);
+    }
   };
 
   const handleUpdateLaundry = (itemId: string, updates: Partial<LaundryItem>) => {
-    setLaundry(prev => prev.map(item =>
-      item.id === itemId ? { ...item, ...updates } : item
-    ));
+    // Will implement with real database later
+    console.log('Update laundry:', itemId, updates);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -219,12 +195,20 @@ export default function HousekeepingPage() {
           
           <div className="p-6">
             <TabsContent value="rooms" className="mt-0">
-              <RoomBoard 
-                rooms={rooms} 
-                staff={staff}
-                onAssignStaff={handleAssignStaff}
-                onUpdateStatus={handleUpdateRoomStatus}
-              />
+              {roomCleaningStatus.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <BedDouble className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium">No rooms found</p>
+                  <p className="text-sm">Add rooms first to manage housekeeping</p>
+                </div>
+              ) : (
+                <RoomBoard 
+                  rooms={roomCleaningStatus} 
+                  staff={staff}
+                  onAssignStaff={handleAssignStaff}
+                  onUpdateStatus={handleUpdateRoomStatus}
+                />
+              )}
             </TabsContent>
             
             <TabsContent value="tasks" className="mt-0">
