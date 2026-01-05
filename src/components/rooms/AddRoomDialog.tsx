@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCreateRoom, useRoomTypes } from '@/hooks/useRooms';
+import { useCreateRoom } from '@/hooks/useRooms';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -21,13 +21,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Loader2, Upload, X, Image } from 'lucide-react';
 
@@ -39,7 +32,6 @@ const roomSchema = z.object({
   capacity: z.coerce.number().min(1, 'Capacity must be at least 1'),
   size: z.coerce.number().min(0, 'Size must be positive'),
   description: z.string().optional(),
-  roomTypeId: z.string().optional(),
 });
 
 type RoomFormData = z.infer<typeof roomSchema>;
@@ -51,7 +43,6 @@ interface AddRoomDialogProps {
 
 const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => {
   const createRoom = useCreateRoom();
-  const { data: roomTypes = [] } = useRoomTypes();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -66,7 +57,6 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
       capacity: 2,
       size: 300,
       description: '',
-      roomTypeId: '',
     },
   });
 
@@ -129,7 +119,6 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
         capacity: data.capacity,
         size: data.size,
         description: data.description || '',
-        roomTypeId: data.roomTypeId || undefined,
         amenities: ['WiFi', 'TV', 'Air Conditioning'],
         status: 'AVAILABLE',
         cleaningStatus: 'CLEAN',
@@ -230,31 +219,6 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
                   <FormControl>
                     <Input placeholder="Deluxe Ocean Suite" {...field} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="roomTypeId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Room Type (Optional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a room type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {roomTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
