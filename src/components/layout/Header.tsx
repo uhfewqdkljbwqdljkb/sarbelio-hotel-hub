@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Bell, Search, Settings, LogOut, User, LayoutDashboard, CalendarDays, 
   BedDouble, SprayCan, UtensilsCrossed, Box, DollarSign, Megaphone, 
-  CalendarRange, UserCheck, Users, LucideIcon 
+  CalendarRange, UserCheck, Users, LucideIcon, Menu
 } from 'lucide-react';
 import { MOCK_USER } from '@/data/constants';
 import {
@@ -45,7 +45,11 @@ const SEARCH_ITEMS: SearchItem[] = [
   { id: 'settings', label: 'Settings', path: '/settings', icon: Settings, keywords: ['config', 'preferences', 'profile', 'hotel'] },
 ];
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -131,8 +135,16 @@ const Header: React.FC = () => {
 
   return (
     <header className="flex items-center justify-between h-16 px-4 md:px-6 bg-card border-b border-border">
-      {/* Title / Breadcrumbs */}
-      <div>
+      {/* Left Side - Menu + Title */}
+      <div className="flex items-center gap-3">
+        {/* Mobile Menu Button */}
+        <button
+          onClick={onMenuClick}
+          className="md:hidden p-2 text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Open navigation menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         <h1 className="text-lg md:text-xl font-bold text-foreground">{formattedTitle}</h1>
       </div>
 
