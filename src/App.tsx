@@ -2,8 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
+import BookingPage from "@/pages/BookingPage";
 import Dashboard from "@/pages/Dashboard";
 import RoomsPage from "@/pages/RoomsPage";
 import ReservationsPage from "@/pages/ReservationsPage";
@@ -27,7 +28,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* Public Booking Page */}
+          <Route path="/" element={<BookingPage />} />
           
           {/* Admin Routes - Wrapped in Layout */}
           <Route path="/*" element={
