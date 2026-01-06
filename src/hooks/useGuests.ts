@@ -49,24 +49,31 @@ export function useCreateGuest() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (guest: Partial<Guest>) => {
+    mutationFn: async (guest: { firstName: string; lastName: string; email?: string; phone?: string; nationality?: string }) => {
+      if (!guest.firstName || !guest.lastName) {
+        throw new Error('First name and last name are required');
+      }
+      
       const { data, error } = await supabase
         .from('guests')
         .insert({
           first_name: guest.firstName,
           last_name: guest.lastName,
-          email: guest.email,
-          phone: guest.phone,
-          nationality: guest.nationality,
-          loyalty_tier: guest.loyaltyTier || 'STANDARD',
-          loyalty_points: guest.loyaltyPoints || 0,
-          total_spent: guest.totalSpent || 0,
-          total_stays: guest.totalStays || 0,
+          email: guest.email || null,
+          phone: guest.phone || null,
+          nationality: guest.nationality || null,
+          loyalty_tier: 'STANDARD',
+          loyalty_points: 0,
+          total_spent: 0,
+          total_stays: 0,
         })
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Guest creation error:', error);
+        throw error;
+      }
       return mapDbGuestToGuest(data as DbGuest);
     },
     onSuccess: () => {

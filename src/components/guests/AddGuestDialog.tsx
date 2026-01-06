@@ -68,10 +68,6 @@ const AddGuestDialog: React.FC<AddGuestDialogProps> = ({ open, onOpenChange }) =
         email: data.email,
         phone: data.phone || undefined,
         nationality: data.nationality || undefined,
-        loyaltyTier: data.loyaltyTier || 'STANDARD',
-        loyaltyPoints: 0,
-        totalSpent: 0,
-        totalStays: 0,
       });
       toast.success('Guest added successfully');
       form.reset();

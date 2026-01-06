@@ -128,6 +128,7 @@ const ReservationsPage: React.FC = () => {
       const room = rooms.find(r => r.id === selectedRoomId);
       
       await createReservation.mutateAsync({
+        confirmationCode: `CNF-${Date.now().toString(36).toUpperCase()}`,
         guestName,
         guestEmail,
         roomId: selectedRoomId,
