@@ -3,9 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Bell, Search, Settings, LogOut, User, LayoutDashboard, CalendarDays, 
   BedDouble, SprayCan, UtensilsCrossed, Box, DollarSign, Megaphone, 
-  CalendarRange, UserCheck, Users, LucideIcon, Menu
+  CalendarRange, UserCheck, Users, LucideIcon, Menu, Store
 } from 'lucide-react';
-import { MOCK_USER } from '@/data/constants';
+import { ROLE_LABELS } from '@/data/constants';
+import { useAuth, AppRole } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,13 +36,13 @@ const SEARCH_ITEMS: SearchItem[] = [
   { id: 'rooms', label: 'Rooms', path: '/rooms', icon: BedDouble, keywords: ['room', 'accommodation', 'bed'] },
   { id: 'housekeeping', label: 'Housekeeping', path: '/housekeeping', icon: SprayCan, keywords: ['clean', 'cleaning', 'laundry', 'tasks'] },
   { id: 'restaurant', label: 'Restaurant', path: '/restaurant', icon: UtensilsCrossed, keywords: ['food', 'menu', 'dining', 'pos', 'orders'] },
+  { id: 'minimarket', label: 'Minimarket', path: '/minimarket', icon: Store, keywords: ['shop', 'store', 'products', 'sales'] },
   { id: 'inventory', label: 'Inventory', path: '/inventory', icon: Box, keywords: ['stock', 'supplies', 'items'] },
   { id: 'financials', label: 'Financials', path: '/financials', icon: DollarSign, keywords: ['money', 'finance', 'reports', 'revenue', 'expenses'] },
   { id: 'crm', label: 'CRM & Marketing', path: '/crm', icon: Megaphone, keywords: ['marketing', 'customer', 'campaign'] },
   { id: 'calendar', label: 'Calendar', path: '/calendar', icon: CalendarRange, keywords: ['schedule', 'events', 'dates'] },
   { id: 'concierge', label: 'Concierge', path: '/concierge', icon: UserCheck, keywords: ['service', 'request', 'help'] },
   { id: 'guests', label: 'Guests', path: '/guests', icon: Users, keywords: ['customer', 'visitor', 'people'] },
-  { id: 'minimarket', label: 'Minimarket', path: '/minimarket', icon: Box, keywords: ['shop', 'store', 'products', 'sales'] },
   { id: 'settings', label: 'Settings', path: '/settings', icon: Settings, keywords: ['config', 'preferences', 'profile', 'hotel'] },
 ];
 
@@ -52,6 +53,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { profile, role, signOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -62,6 +64,11 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   // Format pathname for breadcrumb title
   const title = location.pathname.split('/')[1] || 'Dashboard';
   const formattedTitle = title.charAt(0).toUpperCase() + title.slice(1);
+
+  // Get user display info
+  const userName = profile?.full_name || profile?.email?.split('@')[0] || 'User';
+  const userInitial = userName[0]?.toUpperCase() || 'U';
+  const userRole = role ? ROLE_LABELS[role] : 'Staff';
 
   // Filter search items based on query
   const filteredItems = searchQuery.trim() 
@@ -129,7 +136,9 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/auth');
     toast.success('Logged out successfully');
   };
 
@@ -289,14 +298,12 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center pl-2 md:pl-4 border-l border-border focus:outline-none">
-              <img
-                src={MOCK_USER.avatarUrl}
-                alt={MOCK_USER.name}
-                className="w-8 h-8 rounded-full object-cover border border-border"
-              />
+              <div className="w-8 h-8 rounded-full bg-primary-200 flex items-center justify-center text-primary-800 font-semibold text-sm border border-border">
+                {userInitial}
+              </div>
               <div className="ml-3 hidden md:block text-left">
-                <p className="text-sm font-medium text-foreground">{MOCK_USER.name}</p>
-                <p className="text-xs text-muted-foreground">{MOCK_USER.role}</p>
+                <p className="text-sm font-medium text-foreground">{userName}</p>
+                <p className="text-xs text-muted-foreground">{userRole}</p>
               </div>
             </button>
           </DropdownMenuTrigger>
