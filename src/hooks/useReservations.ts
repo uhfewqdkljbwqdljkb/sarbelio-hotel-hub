@@ -146,3 +146,38 @@ export function useUpdateReservation() {
     },
   });
 }
+
+export function useCancelReservation() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, roomId }: { id: string; roomId?: string }) => {
+      // Update reservation status to CANCELLED
+      const { data, error } = await supabase
+        .from('reservations')
+        .update({ status: 'CANCELLED' })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Release the room if it was reserved
+      if (roomId) {
+        await supabase
+          .from('rooms')
+          .update({ status: 'AVAILABLE' })
+          .eq('id', roomId);
+      }
+      
+      return mapDbReservationToReservation(data as DbReservation);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['revenue-data'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['combined-transactions'] });
+    },
+  });
+}
