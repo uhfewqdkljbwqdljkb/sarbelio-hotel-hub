@@ -8,8 +8,9 @@ import { useBooking } from '@/contexts/BookingContext';
 import { useCreateReservation } from '@/hooks/useReservations';
 import { useCreateGuest } from '@/hooks/useGuests';
 import { useUpdateRoom } from '@/hooks/useRooms';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { format, differenceInDays } from 'date-fns';
+import { format } from 'date-fns';
 import { Check, Loader2, Calendar, Users, BedDouble, CreditCard } from 'lucide-react';
 
 interface BookingModalProps {
@@ -42,14 +43,29 @@ export const BookingModal: React.FC<BookingModalProps> = ({ open, onClose }) => 
 
     setIsSubmitting(true);
     try {
-      // Create guest first
-      const guest = await createGuest.mutateAsync({
-        firstName: guestInfo.firstName,
-        lastName: guestInfo.lastName,
-        email: guestInfo.email,
-        phone: guestInfo.phone,
-        nationality: guestInfo.nationality || undefined,
-      });
+      // Check if guest already exists by email
+      const { data: existingGuest } = await supabase
+        .from('guests')
+        .select('id')
+        .eq('email', guestInfo.email)
+        .maybeSingle();
+
+      let guestId: string | undefined;
+
+      if (existingGuest) {
+        // Use existing guest
+        guestId = existingGuest.id;
+      } else {
+        // Create new guest
+        const guest = await createGuest.mutateAsync({
+          firstName: guestInfo.firstName,
+          lastName: guestInfo.lastName,
+          email: guestInfo.email,
+          phone: guestInfo.phone,
+          nationality: guestInfo.nationality || undefined,
+        });
+        guestId = guest.id;
+      }
 
       // Generate confirmation code
       const code = `CNF-${Date.now().toString(36).toUpperCase()}`;
