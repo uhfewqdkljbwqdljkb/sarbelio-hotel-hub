@@ -3,15 +3,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import { INVENTORY_ITEMS, SUPPLIERS, PURCHASE_ORDERS } from '@/data/inventoryMock';
+import { 
+  useInventoryItems, useCreateInventoryItem, useUpdateInventoryItem,
+  useSuppliers, useCreateSupplier, useUpdateSupplier, useDeleteSupplier,
+  usePurchaseOrders, useCreatePurchaseOrder,
+  useOrderTemplates, useCreateOrderTemplate, useDeleteOrderTemplate
+} from '@/hooks/useInventory';
 import { InventoryItem, Supplier, PurchaseOrder, InventoryCategory, OrderTemplate, PurchaseOrderItem, ItemDestination } from '@/types/inventory';
-import { Package, Truck, Users, AlertTriangle, Search, Plus, Star, Bell, Edit, Trash2, FileText, Copy } from 'lucide-react';
+import { Package, Truck, Users, AlertTriangle, Search, Plus, Star, Bell, Edit, Trash2, FileText, Copy, Loader2 } from 'lucide-react';
 
 const categoryLabels: Record<InventoryCategory, string> = {
   FOOD: 'Food', BEVERAGE: 'Beverage', HOUSEKEEPING: 'Housekeeping',
@@ -53,10 +58,22 @@ const getStockStatus = (quantity: number, minStock: number): 'IN_STOCK' | 'LOW_S
 };
 
 export default function InventoryPage() {
-  const [items, setItems] = useState<InventoryItem[]>(INVENTORY_ITEMS);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(SUPPLIERS);
-  const [orders, setOrders] = useState<PurchaseOrder[]>(PURCHASE_ORDERS);
-  const [templates, setTemplates] = useState<OrderTemplate[]>([]);
+  // Data from hooks
+  const { data: items = [], isLoading: itemsLoading } = useInventoryItems();
+  const { data: suppliers = [], isLoading: suppliersLoading } = useSuppliers();
+  const { data: orders = [], isLoading: ordersLoading } = usePurchaseOrders();
+  const { data: templates = [], isLoading: templatesLoading } = useOrderTemplates();
+  
+  // Mutations
+  const createItem = useCreateInventoryItem();
+  const updateItem = useUpdateInventoryItem();
+  const createSupplier = useCreateSupplier();
+  const updateSupplier = useUpdateSupplier();
+  const deleteSupplier = useDeleteSupplier();
+  const createOrder = useCreatePurchaseOrder();
+  const createTemplate = useCreateOrderTemplate();
+  const { mutateAsync: deleteTemplate } = useDeleteOrderTemplate();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   
@@ -77,17 +94,18 @@ export default function InventoryPage() {
   // Low stock alerts
   const lowStockItems = items.filter(i => i.quantity <= i.minStock);
   const hasLowStockAlerts = lowStockItems.length > 0;
+  const isLoading = itemsLoading || suppliersLoading || ordersLoading || templatesLoading;
   
   useEffect(() => {
     // Show low stock alerts on mount
-    if (lowStockItems.length > 0) {
+    if (lowStockItems.length > 0 && !itemsLoading) {
       toast({
         title: `⚠️ Low Stock Alert`,
         description: `${lowStockItems.length} item(s) are below minimum stock levels`,
         variant: "destructive",
       });
     }
-  }, []);
+  }, [itemsLoading]);
 
   const totalValue = items.reduce((sum, i) => sum + (i.quantity * i.unitCost), 0);
   const pendingOrders = orders.filter(o => o.status === 'PENDING' || o.status === 'ORDERED').length;
@@ -99,29 +117,36 @@ export default function InventoryPage() {
   });
 
   // Supplier CRUD
-  const handleSaveSupplier = () => {
+  const handleSaveSupplier = async () => {
     if (!newSupplier.name.trim() || !newSupplier.email.trim()) {
       toast({ title: "Error", description: "Name and email are required", variant: "destructive" });
       return;
     }
     
-    if (editingSupplier) {
-      setSuppliers(prev => prev.map(s => s.id === editingSupplier.id ? { ...s, ...newSupplier } : s));
-      toast({ title: "Supplier Updated", description: `${newSupplier.name} has been updated` });
-    } else {
-      const supplier: Supplier = { id: `sup_${Date.now()}`, ...newSupplier, totalOrders: 0 };
-      setSuppliers(prev => [...prev, supplier]);
-      toast({ title: "Supplier Added", description: `${newSupplier.name} has been added` });
+    try {
+      if (editingSupplier) {
+        await updateSupplier.mutateAsync({ id: editingSupplier.id, ...newSupplier });
+        toast({ title: "Supplier Updated", description: `${newSupplier.name} has been updated` });
+      } else {
+        await createSupplier.mutateAsync(newSupplier);
+        toast({ title: "Supplier Added", description: `${newSupplier.name} has been added` });
+      }
+      
+      setSupplierDialogOpen(false);
+      setEditingSupplier(null);
+      setNewSupplier({ name: '', email: '', phone: '', address: '', categories: [], rating: 5 });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to save supplier", variant: "destructive" });
     }
-    
-    setSupplierDialogOpen(false);
-    setEditingSupplier(null);
-    setNewSupplier({ name: '', email: '', phone: '', address: '', categories: [], rating: 5 });
   };
 
-  const handleDeleteSupplier = (id: string) => {
-    setSuppliers(prev => prev.filter(s => s.id !== id));
-    toast({ title: "Supplier Deleted" });
+  const handleDeleteSupplier = async (id: string) => {
+    try {
+      await deleteSupplier.mutateAsync(id);
+      toast({ title: "Supplier Deleted" });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to delete supplier", variant: "destructive" });
+    }
   };
 
   const handleEditSupplier = (supplier: Supplier) => {
@@ -131,26 +156,27 @@ export default function InventoryPage() {
   };
 
   // Item CRUD
-  const handleSaveItem = () => {
+  const handleSaveItem = async () => {
     if (!newItem.name.trim() || !newItem.sku.trim()) {
       toast({ title: "Error", description: "Name and SKU are required", variant: "destructive" });
       return;
     }
     
-    const status = getStockStatus(newItem.quantity, newItem.minStock);
-    
-    if (editingItem) {
-      setItems(prev => prev.map(i => i.id === editingItem.id ? { ...i, ...newItem, status } : i));
-      toast({ title: "Item Updated", description: `${newItem.name} has been updated` });
-    } else {
-      const item: InventoryItem = { id: `inv_${Date.now()}`, ...newItem, status };
-      setItems(prev => [...prev, item]);
-      toast({ title: "Item Added", description: `${newItem.name} has been added` });
+    try {
+      if (editingItem) {
+        await updateItem.mutateAsync({ id: editingItem.id, ...newItem });
+        toast({ title: "Item Updated", description: `${newItem.name} has been updated` });
+      } else {
+        await createItem.mutateAsync(newItem);
+        toast({ title: "Item Added", description: `${newItem.name} has been added` });
+      }
+      
+      setItemDialogOpen(false);
+      setEditingItem(null);
+      setNewItem({ name: '', sku: '', category: 'FOOD', quantity: 0, unit: 'pcs', minStock: 10, maxStock: 100, unitCost: 0, sellPrice: 0, location: '', destination: 'INTERNAL' });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to save item", variant: "destructive" });
     }
-    
-    setItemDialogOpen(false);
-    setEditingItem(null);
-    setNewItem({ name: '', sku: '', category: 'FOOD', quantity: 0, unit: 'pcs', minStock: 10, maxStock: 100, unitCost: 0, sellPrice: 0, location: '', destination: 'INTERNAL' });
   };
 
   const handleEditItem = (item: InventoryItem) => {
@@ -160,7 +186,7 @@ export default function InventoryPage() {
   };
 
   // Order Templates
-  const handleSaveTemplate = () => {
+  const handleSaveTemplate = async () => {
     if (!newTemplate.name.trim() || !newTemplate.supplierId || newTemplate.items.length === 0) {
       toast({ title: "Error", description: "Name, supplier and at least one item are required", variant: "destructive" });
       return;
@@ -172,41 +198,43 @@ export default function InventoryPage() {
       return { itemId: ti.itemId, itemName: item.name, quantity: ti.quantity, unitCost: item.unitCost, total: ti.quantity * item.unitCost };
     });
     
-    const template: OrderTemplate = {
-      id: `tmpl_${Date.now()}`,
-      name: newTemplate.name,
-      supplierId: newTemplate.supplierId,
-      supplierName: supplier?.name || '',
-      items: templateItems,
-      totalAmount: templateItems.reduce((sum, i) => sum + i.total, 0),
-      createdAt: new Date().toISOString(),
-    };
-    
-    setTemplates(prev => [...prev, template]);
-    toast({ title: "Template Saved", description: `${newTemplate.name} template has been saved` });
-    setTemplateDialogOpen(false);
-    setNewTemplate({ name: '', supplierId: '', items: [] });
+    try {
+      await createTemplate.mutateAsync({
+        name: newTemplate.name,
+        supplierId: newTemplate.supplierId,
+        supplierName: supplier?.name || '',
+        items: templateItems,
+        totalAmount: templateItems.reduce((sum, i) => sum + i.total, 0),
+      });
+      toast({ title: "Template Saved", description: `${newTemplate.name} template has been saved` });
+      setTemplateDialogOpen(false);
+      setNewTemplate({ name: '', supplierId: '', items: [] });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to save template", variant: "destructive" });
+    }
   };
 
-  const handleCreateOrderFromTemplate = (template: OrderTemplate) => {
-    const order: PurchaseOrder = {
-      id: `po_${Date.now()}`,
-      orderNumber: `PO-${new Date().getFullYear()}-${String(orders.length + 1).padStart(3, '0')}`,
-      supplierId: template.supplierId,
-      supplierName: template.supplierName,
-      items: template.items,
-      status: 'DRAFT',
-      totalAmount: template.totalAmount,
-      createdAt: new Date().toISOString(),
-      isTemplate: false,
-    };
-    
-    setOrders(prev => [...prev, order]);
-    toast({ title: "Order Created", description: `Order ${order.orderNumber} created from template` });
+  const handleCreateOrderFromTemplate = async (template: OrderTemplate) => {
+    try {
+      const orderNumber = `PO-${new Date().getFullYear()}-${String(orders.length + 1).padStart(3, '0')}`;
+      await createOrder.mutateAsync({
+        orderNumber,
+        supplierId: template.supplierId,
+        supplierName: template.supplierName,
+        items: template.items,
+        status: 'DRAFT',
+        totalAmount: template.totalAmount,
+        createdAt: new Date().toISOString(),
+        isTemplate: false,
+      });
+      toast({ title: "Order Created", description: `Order ${orderNumber} created from template` });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to create order", variant: "destructive" });
+    }
   };
 
   // Manual Order Creation
-  const handleCreateOrder = () => {
+  const handleCreateOrder = async () => {
     if (!newOrder.supplierId || newOrder.items.length === 0) {
       toast({ title: "Error", description: "Supplier and at least one item are required", variant: "destructive" });
       return;
@@ -218,21 +246,24 @@ export default function InventoryPage() {
       return { itemId: oi.itemId, itemName: item.name, quantity: oi.quantity, unitCost: item.unitCost, total: oi.quantity * item.unitCost };
     });
     
-    const order: PurchaseOrder = {
-      id: `po_${Date.now()}`,
-      orderNumber: `PO-${new Date().getFullYear()}-${String(orders.length + 1).padStart(3, '0')}`,
-      supplierId: newOrder.supplierId,
-      supplierName: supplier?.name || '',
-      items: orderItems,
-      status: 'DRAFT',
-      totalAmount: orderItems.reduce((sum, i) => sum + i.total, 0),
-      createdAt: new Date().toISOString(),
-    };
+    const orderNumber = `PO-${new Date().getFullYear()}-${String(orders.length + 1).padStart(3, '0')}`;
     
-    setOrders(prev => [...prev, order]);
-    toast({ title: "Order Created", description: `Order ${order.orderNumber} has been created` });
-    setOrderDialogOpen(false);
-    setNewOrder({ supplierId: '', templateId: '', items: [] });
+    try {
+      await createOrder.mutateAsync({
+        orderNumber,
+        supplierId: newOrder.supplierId,
+        supplierName: supplier?.name || '',
+        items: orderItems,
+        status: 'DRAFT',
+        totalAmount: orderItems.reduce((sum, i) => sum + i.total, 0),
+        createdAt: new Date().toISOString(),
+      });
+      toast({ title: "Order Created", description: `Order ${orderNumber} has been created` });
+      setOrderDialogOpen(false);
+      setNewOrder({ supplierId: '', templateId: '', items: [] });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to create order", variant: "destructive" });
+    }
   };
 
   const toggleTemplateItem = (itemId: string, forTemplate = true) => {
@@ -262,6 +293,14 @@ export default function InventoryPage() {
       setNewOrder(prev => ({ ...prev, items: prev.items.map(i => i.itemId === itemId ? { ...i, quantity } : i) }));
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -593,7 +632,7 @@ export default function InventoryPage() {
                         <Button size="sm" className="flex-1 bg-primary-200 text-primary-900 hover:bg-primary-300" onClick={() => handleCreateOrderFromTemplate(template)}>
                           <Copy className="h-4 w-4 mr-1" />Use Template
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => setTemplates(prev => prev.filter(t => t.id !== template.id))}>
+                        <Button size="sm" variant="outline" onClick={() => deleteTemplate(template.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
