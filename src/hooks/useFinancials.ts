@@ -365,3 +365,27 @@ export function useCombinedTransactions() {
     },
   });
 }
+
+// Get cancelled reservations for lost revenue tracking
+export function useCancelledReservations() {
+  return useQuery({
+    queryKey: ['cancelled-reservations'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reservations')
+        .select('*')
+        .eq('status', 'CANCELLED')
+        .order('updated_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      const totalLostRevenue = (data || []).reduce((sum, r) => sum + (Number(r.total_amount) || 0), 0);
+      
+      return {
+        cancellations: data || [],
+        totalLostRevenue,
+        count: data?.length || 0,
+      };
+    },
+  });
+}

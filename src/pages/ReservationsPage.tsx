@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useReservations, useCreateReservation } from '@/hooks/useReservations';
+import { useReservations, useCreateReservation, useCancelReservation } from '@/hooks/useReservations';
+import { useCancelledReservations } from '@/hooks/useFinancials';
 import { useRooms } from '@/hooks/useRooms';
 import { useGuests, useCreateGuest } from '@/hooks/useGuests';
 import DashboardCard from '@/components/dashboard/DashboardCard';
@@ -12,10 +13,14 @@ import {
   ArrowUpDown,
   UserPlus,
   X,
-  Loader2
+  Loader2,
+  Ban,
+  AlertTriangle
 } from 'lucide-react';
 import { ReservationStatus, BookingSource, Reservation, Guest } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,12 +34,15 @@ const ReservationsPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [guestMode, setGuestMode] = useState<'existing' | 'new'>('existing');
+  const [activeTab, setActiveTab] = useState<'reservations' | 'cancellations'>('reservations');
   
   const { data: reservations = [], isLoading: reservationsLoading } = useReservations();
   const { data: rooms = [], isLoading: roomsLoading } = useRooms();
   const { data: guests = [], isLoading: guestsLoading } = useGuests();
+  const { data: cancelledData, isLoading: cancelledLoading } = useCancelledReservations();
   const createReservation = useCreateReservation();
   const createGuest = useCreateGuest();
+  const cancelReservation = useCancelReservation();
   
   // Form state for new reservation
   const [selectedGuestId, setSelectedGuestId] = useState('');
@@ -183,12 +191,27 @@ const ReservationsPage: React.FC = () => {
     return sourceColors[source] || 'bg-muted text-muted-foreground';
   };
 
-  const totalBookings = reservations.length;
+  const totalBookings = reservations.filter(r => r.status !== 'CANCELLED').length;
   const confirmedBookings = reservations.filter(r => r.status === 'CONFIRMED').length;
   const pendingBookings = reservations.filter(r => r.status === 'PENDING').length;
-  const totalRevenue = reservations.reduce((sum, r) => sum + r.totalAmount, 0);
+  const totalRevenue = reservations.filter(r => r.status !== 'CANCELLED').reduce((sum, r) => sum + r.totalAmount, 0);
+  const cancelledCount = cancelledData?.count || 0;
+  const lostRevenue = cancelledData?.totalLostRevenue || 0;
 
-  const isLoading = reservationsLoading || roomsLoading || guestsLoading;
+  const handleCancelReservation = async (reservation: Reservation) => {
+    try {
+      await cancelReservation.mutateAsync({
+        id: reservation.id,
+        roomId: reservation.roomId,
+      });
+      toast.success('Reservation cancelled successfully');
+    } catch (error) {
+      toast.error('Failed to cancel reservation');
+      console.error(error);
+    }
+  };
+
+  const isLoading = reservationsLoading || roomsLoading || guestsLoading || cancelledLoading;
 
   if (isLoading) {
     return (
@@ -410,7 +433,7 @@ const ReservationsPage: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <DashboardCard className="flex items-center p-4">
           <div className="p-3 bg-primary-100 text-primary-700 rounded-full mr-4">
             <Calendar className="w-6 h-6" />
@@ -447,7 +470,28 @@ const ReservationsPage: React.FC = () => {
             <p className="text-xl font-bold text-foreground">${totalRevenue.toLocaleString()}</p>
           </div>
         </DashboardCard>
+        <DashboardCard className="flex items-center p-4">
+          <div className="p-3 bg-red-100 text-red-700 rounded-full mr-4">
+            <Ban className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Lost Revenue</p>
+            <p className="text-xl font-bold text-red-600">${lostRevenue.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">{cancelledCount} cancelled</p>
+          </div>
+        </DashboardCard>
       </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'reservations' | 'cancellations')}>
+        <TabsList className="bg-secondary">
+          <TabsTrigger value="reservations">Active Reservations</TabsTrigger>
+          <TabsTrigger value="cancellations">
+            Cancellations {cancelledCount > 0 && <span className="ml-2 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs">{cancelledCount}</span>}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="reservations" className="space-y-4 mt-4">
 
       {/* Filters Toolbar */}
       <div className="bg-card p-4 rounded-xl shadow-sm border border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -529,9 +573,50 @@ const ReservationsPage: React.FC = () => {
                       ${res.totalAmount.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
-                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                      </button>
+                      {res.status !== 'CANCELLED' && res.status !== 'CHECKED_OUT' && (
+                        <AlertDialog>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                                <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem className="text-red-600 cursor-pointer">
+                                  <Ban className="w-4 h-4 mr-2" />
+                                  Cancel Reservation
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="flex items-center gap-2">
+                                <AlertTriangle className="w-5 h-5 text-red-600" />
+                                Cancel Reservation
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to cancel the reservation for <strong>{res.guestName}</strong>? 
+                                This will remove <strong>${res.totalAmount.toLocaleString()}</strong> from your revenue.
+                                This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleCancelReservation(res)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                {cancelReservation.isPending ? (
+                                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                ) : null}
+                                Cancel Reservation
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -540,6 +625,69 @@ const ReservationsPage: React.FC = () => {
           </div>
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="cancellations" className="mt-4">
+          {cancelledData?.cancellations.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground bg-card rounded-xl border">
+              <Ban className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">No cancelled reservations</p>
+              <p className="text-sm">Cancelled bookings will appear here</p>
+            </div>
+          ) : (
+            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-red-50">
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Guest</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Room</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Original Dates</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Source</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold text-red-700 uppercase tracking-wider">Lost Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {cancelledData?.cancellations.map((res: any) => (
+                      <tr key={res.id} className="hover:bg-red-50/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="font-medium text-foreground">{res.guest_name}</div>
+                            <div className="text-xs text-muted-foreground">{res.confirmation_code}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground">{res.room_name || 'Unassigned'}</td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground">
+                          {format(new Date(res.check_in), 'MMM d')} - {format(new Date(res.check_out), 'MMM d, yyyy')}
+                          <div className="text-xs">{res.nights} nights</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded text-xs ${getSourceBadge(res.source)}`}>
+                            {res.source.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right font-semibold text-red-600">
+                          -${Number(res.total_amount).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-red-50 border-t-2 border-red-200">
+                      <td colSpan={4} className="px-6 py-4 text-right font-semibold text-foreground">
+                        Total Lost Revenue:
+                      </td>
+                      <td className="px-6 py-4 text-right font-bold text-red-600 text-lg">
+                        -${lostRevenue.toLocaleString()}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
