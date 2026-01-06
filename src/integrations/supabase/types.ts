@@ -338,13 +338,19 @@ export type Database = {
       }
       inventory_items: {
         Row: {
+          barcode: string | null
           category_id: string | null
           created_at: string | null
+          destination: string | null
           id: string
+          image_url: string | null
           last_restocked: string | null
+          location: string | null
+          max_quantity: number | null
           min_quantity: number | null
           name: string
           quantity: number | null
+          sell_price: number | null
           sku: string | null
           supplier: string | null
           unit: string | null
@@ -352,13 +358,19 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          barcode?: string | null
           category_id?: string | null
           created_at?: string | null
+          destination?: string | null
           id?: string
+          image_url?: string | null
           last_restocked?: string | null
+          location?: string | null
+          max_quantity?: number | null
           min_quantity?: number | null
           name: string
           quantity?: number | null
+          sell_price?: number | null
           sku?: string | null
           supplier?: string | null
           unit?: string | null
@@ -366,13 +378,19 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          barcode?: string | null
           category_id?: string | null
           created_at?: string | null
+          destination?: string | null
           id?: string
+          image_url?: string | null
           last_restocked?: string | null
+          location?: string | null
+          max_quantity?: number | null
           min_quantity?: number | null
           name?: string
           quantity?: number | null
+          sell_price?: number | null
           sku?: string | null
           supplier?: string | null
           unit?: string | null
@@ -672,6 +690,92 @@ export type Database = {
           },
         ]
       }
+      order_template_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          item_id: string | null
+          item_name: string
+          quantity: number
+          template_id: string | null
+          total: number
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          item_id?: string | null
+          item_name: string
+          quantity?: number
+          template_id?: string | null
+          total?: number
+          unit_cost?: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          item_id?: string | null
+          item_name?: string
+          quantity?: number
+          template_id?: string | null
+          total?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_template_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "order_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_templates: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          supplier_id: string | null
+          supplier_name: string
+          total_amount: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          supplier_id?: string | null
+          supplier_name: string
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          supplier_id?: string | null
+          supplier_name?: string
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_templates_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pos_orders: {
         Row: {
           closed_at: string | null
@@ -715,6 +819,107 @@ export type Database = {
             columns: ["table_id"]
             isOneToOne: false
             referencedRelation: "restaurant_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_order_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          item_id: string | null
+          item_name: string
+          order_id: string | null
+          quantity: number
+          total: number
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          item_id?: string | null
+          item_name: string
+          order_id?: string | null
+          quantity?: number
+          total?: number
+          unit_cost?: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          item_id?: string | null
+          item_name?: string
+          order_id?: string | null
+          quantity?: number
+          total?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          created_at: string | null
+          expected_delivery: string | null
+          id: string
+          is_template: boolean | null
+          notes: string | null
+          order_number: string
+          status: string | null
+          supplier_id: string | null
+          supplier_name: string
+          template_name: string | null
+          total_amount: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expected_delivery?: string | null
+          id?: string
+          is_template?: boolean | null
+          notes?: string | null
+          order_number: string
+          status?: string | null
+          supplier_id?: string | null
+          supplier_name: string
+          template_name?: string | null
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expected_delivery?: string | null
+          id?: string
+          is_template?: boolean | null
+          notes?: string | null
+          order_number?: string
+          status?: string | null
+          supplier_id?: string | null
+          supplier_name?: string
+          template_name?: string | null
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -1001,6 +1206,45 @@ export type Database = {
           scheduled_for?: string | null
           status?: Database["public"]["Enums"]["request_status"] | null
           title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          address: string | null
+          categories: string[] | null
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          phone: string | null
+          rating: number | null
+          total_orders: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          categories?: string[] | null
+          created_at?: string | null
+          email: string
+          id?: string
+          name: string
+          phone?: string | null
+          rating?: number | null
+          total_orders?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          categories?: string[] | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          rating?: number | null
+          total_orders?: number | null
           updated_at?: string | null
         }
         Relationships: []
