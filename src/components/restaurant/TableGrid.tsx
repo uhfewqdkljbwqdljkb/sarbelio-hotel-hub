@@ -1,14 +1,21 @@
 import React from 'react';
 import { RestaurantTable, POSOrder, TableStatus } from '@/types/restaurant';
-import { Users, Clock, Utensils } from 'lucide-react';
+import { Users, Clock, Utensils, MoreVertical, CheckCircle } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface TableGridProps {
   tables: RestaurantTable[];
   orders: POSOrder[];
   onTableClick: (table: RestaurantTable) => void;
+  onUpdateTableStatus?: (tableId: string, status: TableStatus) => void;
 }
 
-const TableGrid: React.FC<TableGridProps> = ({ tables, orders, onTableClick }) => {
+const TableGrid: React.FC<TableGridProps> = ({ tables, orders, onTableClick, onUpdateTableStatus }) => {
   const getTableOrder = (tableId: string) => {
     return orders.find(o => o.tableId === tableId && o.status !== 'PAID');
   };
@@ -62,59 +69,88 @@ const TableGrid: React.FC<TableGridProps> = ({ tables, orders, onTableClick }) =
         const order = getTableOrder(table.id);
         
         return (
-          <button
+          <div
             key={table.id}
-            onClick={() => onTableClick(table)}
             className={`
               relative p-4 rounded-xl border-2 transition-all duration-200
               ${getStatusStyles(table.status)}
-              hover:shadow-md hover:scale-[1.02] active:scale-[0.98]
+              hover:shadow-md
             `}
           >
-            {/* Status indicator */}
-            <div className={`absolute top-2 right-2 w-2.5 h-2.5 rounded-full ${getStatusColor(table.status)}`} />
-            
-            {/* Table number */}
-            <div className="text-2xl font-bold text-foreground mb-2">
-              {table.number}
-            </div>
-            
-            {/* Capacity */}
-            <div className="flex items-center text-xs text-muted-foreground mb-2">
-              <Users className="w-3 h-3 mr-1" />
-              {table.capacity} seats
-            </div>
-            
-            {/* Order info if occupied */}
-            {order && (
-              <div className="mt-2 pt-2 border-t border-border/50">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="flex items-center text-muted-foreground">
-                    <Clock className="w-3 h-3 mr-1" />
-                    {getElapsedTime(order.openedAt)}
-                  </span>
-                  <span className="font-semibold text-foreground">
-                    ${order.totalAmount.toFixed(0)}
-                  </span>
-                </div>
-                <div className="flex items-center text-xs text-muted-foreground mt-1">
-                  <Utensils className="w-3 h-3 mr-1" />
-                  {order.items.length} items
-                </div>
+            {/* Dropdown for cleaning status */}
+            {table.status === 'CLEANING' && onUpdateTableStatus && (
+              <div className="absolute top-2 right-2 z-10">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button 
+                      className="p-1 rounded-full hover:bg-yellow-200 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreVertical className="w-4 h-4 text-yellow-700" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onUpdateTableStatus(table.id, 'AVAILABLE')}>
+                      <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                      Mark Available
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
+
+            {/* Status indicator (not for cleaning tables since dropdown is there) */}
+            {table.status !== 'CLEANING' && (
+              <div className={`absolute top-2 right-2 w-2.5 h-2.5 rounded-full ${getStatusColor(table.status)}`} />
+            )}
             
-            {/* Status label */}
-            <div className={`
-              mt-2 text-xs font-semibold uppercase tracking-wide
-              ${table.status === 'AVAILABLE' ? 'text-green-700' : ''}
-              ${table.status === 'OCCUPIED' ? 'text-red-700' : ''}
-              ${table.status === 'RESERVED' ? 'text-blue-700' : ''}
-              ${table.status === 'CLEANING' ? 'text-yellow-700' : ''}
-            `}>
-              {table.status}
-            </div>
-          </button>
+            {/* Clickable area */}
+            <button
+              onClick={() => onTableClick(table)}
+              className="w-full text-left hover:scale-[1.02] active:scale-[0.98] transition-transform"
+            >
+              {/* Table number */}
+              <div className="text-2xl font-bold text-foreground mb-2">
+                {table.number}
+              </div>
+              
+              {/* Capacity */}
+              <div className="flex items-center text-xs text-muted-foreground mb-2">
+                <Users className="w-3 h-3 mr-1" />
+                {table.capacity} seats
+              </div>
+              
+              {/* Order info if occupied */}
+              {order && (
+                <div className="mt-2 pt-2 border-t border-border/50">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center text-muted-foreground">
+                      <Clock className="w-3 h-3 mr-1" />
+                      {getElapsedTime(order.openedAt)}
+                    </span>
+                    <span className="font-semibold text-foreground">
+                      ${order.totalAmount.toFixed(0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    <Utensils className="w-3 h-3 mr-1" />
+                    {order.items.length} items
+                  </div>
+                </div>
+              )}
+              
+              {/* Status label */}
+              <div className={`
+                mt-2 text-xs font-semibold uppercase tracking-wide
+                ${table.status === 'AVAILABLE' ? 'text-green-700' : ''}
+                ${table.status === 'OCCUPIED' ? 'text-red-700' : ''}
+                ${table.status === 'RESERVED' ? 'text-blue-700' : ''}
+                ${table.status === 'CLEANING' ? 'text-yellow-700' : ''}
+              `}>
+                {table.status}
+              </div>
+            </button>
+          </div>
         );
       })}
     </div>
