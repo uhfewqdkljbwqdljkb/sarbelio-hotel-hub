@@ -49,6 +49,14 @@ const RestaurantPage: React.FC = () => {
     setView('POS');
   };
 
+  const handleUpdateTableStatus = async (tableId: string, status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING') => {
+    try {
+      await updateTable.mutateAsync({ id: tableId, status });
+    } catch (error) {
+      console.error('Failed to update table status:', error);
+    }
+  };
+
   const handleOrderClick = (order: POSOrder) => {
     const table = tables.find(t => t.id === order.tableId);
     if (table) {
@@ -271,7 +279,8 @@ const RestaurantPage: React.FC = () => {
           <TableGrid 
             tables={tables} 
             orders={orders} 
-            onTableClick={handleTableClick} 
+            onTableClick={handleTableClick}
+            onUpdateTableStatus={handleUpdateTableStatus}
           />
         ) : (
           <OrderList 
