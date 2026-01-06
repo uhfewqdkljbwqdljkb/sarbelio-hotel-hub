@@ -1,7 +1,12 @@
-import React from 'react';
-import { Heart, Users, Star, Maximize } from 'lucide-react';
+import React, { useState } from 'react';
+import { Heart, Users, Star, Maximize, CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Room } from '@/types';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { useBooking } from '@/contexts/BookingContext';
+import { cn } from '@/lib/utils';
 
 interface RoomCardProps {
   room: Room;
@@ -18,6 +23,22 @@ export const RoomCard: React.FC<RoomCardProps> = ({
 }) => {
   const { name, roomNumber, capacity, size, price, amenities } = room;
   const rating = 4.8;
+  const { bookingData, setDates } = useBooking();
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: bookingData.checkIn || undefined,
+    to: bookingData.checkOut || undefined,
+  });
+
+  const handleDateSelect = (range: { from?: Date; to?: Date } | undefined) => {
+    if (range) {
+      setDateRange({ from: range.from, to: range.to });
+      if (range.from && range.to) {
+        setDates(range.from, range.to);
+        setIsCalendarOpen(false);
+      }
+    }
+  };
 
   return (
     <div className="group cursor-pointer flex flex-col h-full bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500">
@@ -71,13 +92,41 @@ export const RoomCard: React.FC<RoomCardProps> = ({
             <span className="text-2xl font-bold text-slate-900">${price}</span>
             <span className="text-sm text-slate-400 ml-1">/ night</span>
           </div>
-          <Button 
-            onClick={onBook}
-            disabled={!hasDateSelected}
-            className="bg-[#8c7a6b] hover:bg-[#7a6a5d] text-white text-xs font-semibold px-5 disabled:opacity-50"
-          >
-            {hasDateSelected ? 'Book Now' : 'Select Dates'}
-          </Button>
+          {hasDateSelected ? (
+            <Button 
+              onClick={onBook}
+              className="bg-[#8c7a6b] hover:bg-[#7a6a5d] text-white text-xs font-semibold px-5"
+            >
+              Book Now
+            </Button>
+          ) : (
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline"
+                  className="text-xs font-semibold px-5 border-[#8c7a6b] text-[#8c7a6b] hover:bg-[#8c7a6b] hover:text-white"
+                >
+                  <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+                  Select Dates
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={dateRange}
+                  onSelect={handleDateSelect}
+                  numberOfMonths={2}
+                  disabled={(date) => date < new Date()}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+                {dateRange.from && dateRange.to && (
+                  <div className="px-4 pb-3 text-sm text-muted-foreground text-center border-t pt-2">
+                    {format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d, yyyy')}
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       </div>
     </div>
