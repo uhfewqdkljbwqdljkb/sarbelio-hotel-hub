@@ -21,8 +21,24 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Loader2, Upload, X, Image } from 'lucide-react';
+import { Loader2, X, Image, Plus } from 'lucide-react';
+
+const COMMON_AMENITIES = [
+  'WiFi',
+  'TV',
+  'Air Conditioning',
+  'Mini Bar',
+  'Room Service',
+  'Balcony',
+  'Mountain View',
+  'Fireplace',
+  'Kitchen',
+  'Jacuzzi',
+  'Safe',
+  'Hair Dryer',
+];
 
 const roomSchema = z.object({
   roomNumber: z.string().min(1, 'Room number is required'),
@@ -46,6 +62,8 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [customAmenity, setCustomAmenity] = useState('');
 
   const form = useForm<RoomFormData>({
     resolver: zodResolver(roomSchema),
@@ -59,6 +77,25 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
       description: '',
     },
   });
+
+  const toggleAmenity = (amenity: string) => {
+    setSelectedAmenities(prev => 
+      prev.includes(amenity) 
+        ? prev.filter(a => a !== amenity)
+        : [...prev, amenity]
+    );
+  };
+
+  const addCustomAmenity = () => {
+    if (customAmenity.trim() && !selectedAmenities.includes(customAmenity.trim())) {
+      setSelectedAmenities(prev => [...prev, customAmenity.trim()]);
+      setCustomAmenity('');
+    }
+  };
+
+  const removeAmenity = (amenity: string) => {
+    setSelectedAmenities(prev => prev.filter(a => a !== amenity));
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -119,7 +156,7 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
         capacity: data.capacity,
         size: data.size,
         description: data.description || '',
-        amenities: ['WiFi', 'TV', 'Air Conditioning'],
+        amenities: selectedAmenities.length > 0 ? selectedAmenities : ['WiFi', 'TV', 'Air Conditioning'],
         status: 'AVAILABLE',
         cleaningStatus: 'CLEAN',
         imageUrl,
@@ -128,6 +165,7 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
       form.reset();
       setImageFile(null);
       setImagePreview(null);
+      setSelectedAmenities([]);
       onOpenChange(false);
     } catch (error) {
       toast.error('Failed to create room');
@@ -250,7 +288,68 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
                     <FormMessage />
                   </FormItem>
                 )}
-              />
+            />
+
+            {/* Room Features / Amenities */}
+            <div>
+              <label className="block text-sm font-medium mb-3">Room Features</label>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {COMMON_AMENITIES.map((amenity) => (
+                  <label 
+                    key={amenity}
+                    className="flex items-center gap-2 cursor-pointer text-sm"
+                  >
+                    <Checkbox 
+                      checked={selectedAmenities.includes(amenity)}
+                      onCheckedChange={() => toggleAmenity(amenity)}
+                    />
+                    <span className="text-muted-foreground">{amenity}</span>
+                  </label>
+                ))}
+              </div>
+              
+              {/* Custom amenity input */}
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="Add custom feature..."
+                  value={customAmenity}
+                  onChange={(e) => setCustomAmenity(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomAmenity())}
+                  className="flex-1"
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="icon"
+                  onClick={addCustomAmenity}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* Selected custom amenities */}
+              {selectedAmenities.filter(a => !COMMON_AMENITIES.includes(a)).length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {selectedAmenities
+                    .filter(a => !COMMON_AMENITIES.includes(a))
+                    .map((amenity) => (
+                      <span 
+                        key={amenity}
+                        className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-1 rounded-full"
+                      >
+                        {amenity}
+                        <button 
+                          type="button" 
+                          onClick={() => removeAmenity(amenity)}
+                          className="hover:text-destructive"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                </div>
+              )}
+            </div>
               <FormField
                 control={form.control}
                 name="size"
