@@ -93,12 +93,34 @@ export const BookingModal: React.FC<BookingModalProps> = ({ open, onClose }) => 
         status: 'RESERVED',
       });
 
+      // Send confirmation email
+      try {
+        await supabase.functions.invoke('send-booking-confirmation', {
+          body: {
+            guestName: `${guestInfo.firstName} ${guestInfo.lastName}`,
+            guestEmail: guestInfo.email,
+            confirmationCode: code,
+            roomName: selectedRoom.name,
+            roomNumber: selectedRoom.roomNumber,
+            checkIn: format(checkIn, 'EEEE, MMMM d, yyyy'),
+            checkOut: format(checkOut, 'EEEE, MMMM d, yyyy'),
+            nights: nights,
+            guests: adults + children,
+            totalAmount: totalPrice,
+          },
+        });
+        console.log('Confirmation email sent successfully');
+      } catch (emailError) {
+        console.error('Failed to send confirmation email:', emailError);
+        // Don't fail the booking if email fails
+      }
+
       setConfirmationCode(code);
       setStep('confirmation');
       
       toast({
         title: 'Booking Confirmed!',
-        description: `Your confirmation code is ${code}`,
+        description: `Your confirmation code is ${code}. A confirmation email has been sent.`,
       });
     } catch (error) {
       console.error('Booking error:', error);
