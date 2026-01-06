@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BookingNavbar } from './BookingNavbar';
 import { SocialSidebar } from './SocialSidebar';
 import { BookingBar } from './BookingBar';
 import heroBackground from '@/assets/faraya-chabrouh.jpg';
 
-export const HeroSection: React.FC = () => {
+interface HeroSectionProps {
+  // No special props needed, context is available
+}
+
+export const HeroSection: React.FC<HeroSectionProps> = () => {
   return (
     <div className="relative w-full h-screen flex flex-col overflow-hidden">
       {/* Background Image - Faraya Chabrouh mountain view */}

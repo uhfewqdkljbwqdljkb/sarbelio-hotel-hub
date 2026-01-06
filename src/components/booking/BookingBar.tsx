@@ -1,21 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Users, Calendar, ChevronDown, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useBooking } from '@/contexts/BookingContext';
 
-interface BookingBarProps {
-  onSearch?: (data: { adults: number; children: number; startDate: Date | null; endDate: Date | null }) => void;
-}
-
-export const BookingBar: React.FC<BookingBarProps> = ({ onSearch }) => {
-  const navigate = useNavigate();
+export const BookingBar: React.FC = () => {
+  const { bookingData, setDates, setGuests } = useBooking();
   const [activeDropdown, setActiveDropdown] = useState<'guests' | 'calendar' | null>(null);
   
-  const [adults, setAdults] = useState(2);
-  const [children, setChildren] = useState(0);
+  const { adults, children, checkIn: startDate, checkOut: endDate } = bookingData;
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
   const [hoverDate, setHoverDate] = useState<Date | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -30,11 +23,13 @@ export const BookingBar: React.FC<BookingBarProps> = ({ onSearch }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const updateGuests = (type: 'adults' | 'children', operation: 'increment' | 'decrement') => {
+  const updateGuestsCount = (type: 'adults' | 'children', operation: 'increment' | 'decrement') => {
     if (type === 'adults') {
-      setAdults(prev => operation === 'increment' ? prev + 1 : Math.max(1, prev - 1));
+      const newAdults = operation === 'increment' ? adults + 1 : Math.max(1, adults - 1);
+      setGuests(newAdults, children);
     } else {
-      setChildren(prev => operation === 'increment' ? prev + 1 : Math.max(0, prev - 1));
+      const newChildren = operation === 'increment' ? children + 1 : Math.max(0, children - 1);
+      setGuests(adults, newChildren);
     }
   };
 
@@ -67,13 +62,12 @@ export const BookingBar: React.FC<BookingBarProps> = ({ onSearch }) => {
     const clickedDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
     
     if (!startDate || (startDate && endDate)) {
-      setStartDate(clickedDate);
-      setEndDate(null);
+      setDates(clickedDate, null);
     } else if (startDate && !endDate) {
       if (isBefore(clickedDate, startDate)) {
-        setStartDate(clickedDate);
+        setDates(clickedDate, null);
       } else {
-        setEndDate(clickedDate);
+        setDates(startDate, clickedDate);
         setActiveDropdown(null);
       }
     }
@@ -85,9 +79,6 @@ export const BookingBar: React.FC<BookingBarProps> = ({ onSearch }) => {
   };
 
   const handleSearch = () => {
-    if (onSearch) {
-      onSearch({ adults, children, startDate, endDate });
-    }
     // Scroll to rooms section
     const roomsSection = document.getElementById('rooms');
     if (roomsSection) {
@@ -166,7 +157,7 @@ export const BookingBar: React.FC<BookingBarProps> = ({ onSearch }) => {
                 </div>
                 <div className="flex items-center gap-4">
                   <button 
-                    onClick={() => updateGuests('adults', 'decrement')}
+                    onClick={() => updateGuestsCount('adults', 'decrement')}
                     className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center hover:bg-white/10 text-white disabled:opacity-30"
                     disabled={adults <= 1}
                   >
@@ -174,7 +165,7 @@ export const BookingBar: React.FC<BookingBarProps> = ({ onSearch }) => {
                   </button>
                   <span className="w-4 text-center text-white">{adults}</span>
                   <button 
-                    onClick={() => updateGuests('adults', 'increment')}
+                    onClick={() => updateGuestsCount('adults', 'increment')}
                     className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center hover:bg-white/10 text-white"
                   >
                     <Plus size={14} />
@@ -191,7 +182,7 @@ export const BookingBar: React.FC<BookingBarProps> = ({ onSearch }) => {
                 </div>
                 <div className="flex items-center gap-4">
                   <button 
-                    onClick={() => updateGuests('children', 'decrement')}
+                    onClick={() => updateGuestsCount('children', 'decrement')}
                     className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center hover:bg-white/10 text-white disabled:opacity-30"
                     disabled={children <= 0}
                   >
@@ -199,7 +190,7 @@ export const BookingBar: React.FC<BookingBarProps> = ({ onSearch }) => {
                   </button>
                   <span className="w-4 text-center text-white">{children}</span>
                   <button 
-                    onClick={() => updateGuests('children', 'increment')}
+                    onClick={() => updateGuestsCount('children', 'increment')}
                     className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center hover:bg-white/10 text-white"
                   >
                     <Plus size={14} />
@@ -257,7 +248,7 @@ export const BookingBar: React.FC<BookingBarProps> = ({ onSearch }) => {
             
             <div className="mt-4 pt-4 border-t border-white/10 flex justify-end">
               <button 
-                onClick={() => { setStartDate(null); setEndDate(null); }}
+                onClick={() => setDates(null, null)}
                 className="text-xs text-white/50 hover:text-white transition-colors uppercase tracking-wider font-medium"
               >
                 Clear Dates

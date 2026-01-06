@@ -1,7 +1,13 @@
 import React from 'react';
 import { RoomCard } from './RoomCard';
 import { useRooms } from '@/hooks/useRooms';
+import { useBooking } from '@/contexts/BookingContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Room } from '@/types';
+
+interface RoomsSectionProps {
+  onBookRoom: () => void;
+}
 
 const roomImages: Record<string, string> = {
   'bedroom': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop',
@@ -11,11 +17,16 @@ const roomImages: Record<string, string> = {
   'default': 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?q=80&w=1974&auto=format&fit=crop',
 };
 
-export const RoomsSection: React.FC = () => {
+export const RoomsSection: React.FC<RoomsSectionProps> = ({ onBookRoom }) => {
   const { data: rooms, isLoading } = useRooms();
+  const { bookingData, setSelectedRoom } = useBooking();
 
   // Only show available rooms
   const availableRooms = rooms?.filter(room => room.status === 'AVAILABLE') || [];
+
+  // Filter by capacity if guests are selected
+  const totalGuests = bookingData.adults + bookingData.children;
+  const filteredRooms = availableRooms.filter(room => room.capacity >= totalGuests);
 
   const getImageForRoom = (name: string) => {
     const lowerName = name.toLowerCase();
@@ -26,6 +37,13 @@ export const RoomsSection: React.FC = () => {
     }
     return roomImages.default;
   };
+
+  const handleBookRoom = (room: Room) => {
+    setSelectedRoom(room);
+    onBookRoom();
+  };
+
+  const hasDateSelected = bookingData.checkIn && bookingData.checkOut;
 
   return (
     <section id="rooms" className="py-20 md:py-32 px-6 md:px-12 lg:px-24 bg-slate-50">
@@ -42,6 +60,11 @@ export const RoomsSection: React.FC = () => {
             Each room at Sarbelio Hotel is designed to provide the ultimate comfort and relaxation, 
             featuring stunning views and world-class amenities.
           </p>
+          {totalGuests > 1 && (
+            <p className="text-[#8c7a6b] mt-4 font-medium">
+              Showing rooms for {totalGuests} guest{totalGuests !== 1 ? 's' : ''}
+            </p>
+          )}
         </div>
 
         {/* Room Grid */}
@@ -58,30 +81,33 @@ export const RoomsSection: React.FC = () => {
               </div>
             ))}
           </div>
-        ) : availableRooms.length === 0 ? (
+        ) : filteredRooms.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-slate-500 text-lg">No rooms available at the moment. Please check back later.</p>
+            <p className="text-slate-500 text-lg">
+              {availableRooms.length === 0 
+                ? 'No rooms available at the moment. Please check back later.'
+                : `No rooms available for ${totalGuests} guests. Please adjust your guest count.`
+              }
+            </p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {availableRooms.map((room) => (
+            {filteredRooms.map((room) => (
               <RoomCard
                 key={room.id}
+                room={room}
                 image={room.imageUrl !== '/placeholder.svg' ? room.imageUrl : getImageForRoom(room.name)}
-                name={room.name}
-                type={`Room ${room.roomNumber}`}
-                capacity={room.capacity}
-                price={room.price}
-                amenities={room.amenities.length > 0 ? room.amenities : ['WiFi', 'AC', 'TV']}
-                onBook={() => {
-                  const contactSection = document.getElementById('contact');
-                  if (contactSection) {
-                    contactSection.scrollIntoView({ behavior: 'smooth' });
-                  }
-                }}
+                hasDateSelected={!!hasDateSelected}
+                onBook={() => handleBookRoom(room)}
               />
             ))}
           </div>
+        )}
+
+        {!hasDateSelected && filteredRooms.length > 0 && (
+          <p className="text-center text-slate-500 mt-8">
+            Please select your dates above to book a room
+          </p>
         )}
       </div>
     </section>
