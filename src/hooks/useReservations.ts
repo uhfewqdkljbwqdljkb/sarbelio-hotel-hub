@@ -61,29 +61,49 @@ export function useCreateReservation() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (reservation: Partial<Reservation>) => {
+    mutationFn: async (reservation: {
+      confirmationCode: string;
+      guestName: string;
+      guestEmail?: string;
+      phone?: string;
+      roomId?: string;
+      roomName?: string;
+      checkIn: string;
+      checkOut: string;
+      nights: number;
+      guests: number;
+      totalAmount: number;
+      status?: string;
+      source?: string;
+    }) => {
+      if (!reservation.guestName || !reservation.checkIn || !reservation.checkOut) {
+        throw new Error('Guest name, check-in and check-out dates are required');
+      }
+      
       const { data, error } = await supabase
         .from('reservations')
         .insert({
-          confirmation_code: reservation.confirmationCode || `CNF-${Math.floor(10000 + Math.random() * 90000)}`,
+          confirmation_code: reservation.confirmationCode,
           guest_name: reservation.guestName,
-          guest_email: reservation.guestEmail,
-          phone: reservation.phone,
-          room_id: reservation.roomId,
-          room_name: reservation.roomName,
-          room_type_id: reservation.roomTypeId,
+          guest_email: reservation.guestEmail || null,
+          phone: reservation.phone || null,
+          room_id: reservation.roomId || null,
+          room_name: reservation.roomName || null,
           check_in: reservation.checkIn,
           check_out: reservation.checkOut,
-          nights: reservation.nights,
-          guests_count: reservation.guests,
-          total_amount: reservation.totalAmount,
+          nights: reservation.nights || 1,
+          guests_count: reservation.guests || 1,
+          total_amount: reservation.totalAmount || 0,
           status: reservation.status || 'PENDING',
           source: reservation.source || 'DIRECT',
         })
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Reservation creation error:', error);
+        throw error;
+      }
       return mapDbReservationToReservation(data as DbReservation);
     },
     onSuccess: () => {
