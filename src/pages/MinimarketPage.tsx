@@ -377,23 +377,31 @@ export default function MinimarketPage() {
                     <SelectValue placeholder="Select a room" />
                   </SelectTrigger>
                   <SelectContent>
-                    {occupiedRooms.length === 0 ? (
-                      <SelectItem value="" disabled>No occupied rooms</SelectItem>
+                    {occupiedRooms.length === 0 && rooms.length === 0 ? (
+                      <div className="px-2 py-4 text-sm text-muted-foreground text-center">No rooms available</div>
                     ) : (
-                      occupiedRooms.map(room => (
-                        <SelectItem key={room.id} value={room.roomNumber}>
-                          Room {room.roomNumber} - {room.name}
-                        </SelectItem>
-                      ))
-                    )}
-                    {rooms.filter(r => r.status !== 'OCCUPIED').length > 0 && (
                       <>
-                        <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1">Other Rooms</div>
-                        {rooms.filter(r => r.status !== 'OCCUPIED').map(room => (
-                          <SelectItem key={room.id} value={room.roomNumber}>
-                            Room {room.roomNumber} - {room.name} ({room.status})
-                          </SelectItem>
-                        ))}
+                        {occupiedRooms.length > 0 && (
+                          <>
+                            {occupiedRooms.map(room => (
+                              <SelectItem key={room.id} value={room.roomNumber}>
+                                Room {room.roomNumber} - {room.name}
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
+                        {rooms.filter(r => r.status !== 'OCCUPIED').length > 0 && (
+                          <>
+                            {occupiedRooms.length > 0 && (
+                              <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1">Other Rooms</div>
+                            )}
+                            {rooms.filter(r => r.status !== 'OCCUPIED').map(room => (
+                              <SelectItem key={room.id} value={room.roomNumber}>
+                                Room {room.roomNumber} - {room.name} ({room.status})
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
                       </>
                     )}
                   </SelectContent>
