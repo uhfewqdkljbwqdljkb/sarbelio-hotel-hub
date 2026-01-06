@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,11 +8,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/hooks/use-toast';
-import { INVENTORY_ITEMS } from '@/data/inventoryMock';
 import { MINIMARKET_SALES, MinimarketSale, MinimarketSaleItem } from '@/data/minimarketMock';
 import { InventoryItem } from '@/types/inventory';
-import { ShoppingCart, Package, CreditCard, Banknote, Building, Search, Plus, Minus, Trash2, Receipt, TrendingUp, ShoppingBag } from 'lucide-react';
+import { ShoppingCart, Package, CreditCard, Banknote, Building, Search, Plus, Minus, Trash2, Receipt, TrendingUp, ShoppingBag, Loader2 } from 'lucide-react';
 import { useRooms } from '@/hooks/useRooms';
+import { useInventoryItems, useUpdateInventoryItem } from '@/hooks/useInventory';
 
 const categoryLabels: Record<string, string> = {
   SNACKS: 'Snacks', BEVERAGE: 'Beverages', TOILETRIES: 'Toiletries',
@@ -21,9 +21,15 @@ const categoryLabels: Record<string, string> = {
 
 export default function MinimarketPage() {
   const { data: rooms = [] } = useRooms();
-  const [inventory, setInventory] = useState<InventoryItem[]>(
-    INVENTORY_ITEMS.filter(i => i.destination === 'MINIMARKET' || i.destination === 'BOTH')
+  const { data: allInventory = [], isLoading } = useInventoryItems();
+  const updateItem = useUpdateInventoryItem();
+  
+  // Filter inventory items that are tagged for minimarket
+  const inventory = useMemo(() => 
+    allInventory.filter(i => i.destination === 'MINIMARKET' || i.destination === 'BOTH'),
+    [allInventory]
   );
+  
   const [sales, setSales] = useState<MinimarketSale[]>(MINIMARKET_SALES);
   const [cart, setCart] = useState<MinimarketSaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -83,7 +89,7 @@ export default function MinimarketPage() {
     setCart(prev => prev.filter(c => c.itemId !== itemId));
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) return;
     if (paymentMethod === 'ROOM_CHARGE' && !roomNumber.trim()) {
       toast({ title: "Room number required", variant: "destructive" });
@@ -100,13 +106,14 @@ export default function MinimarketPage() {
       cashierName: 'Current User',
     };
 
-    // Deduct from inventory
-    setInventory(prev => prev.map(item => {
-      const cartItem = cart.find(c => c.itemId === item.id);
-      if (!cartItem) return item;
-      const newQty = item.quantity - cartItem.quantity;
-      return { ...item, quantity: newQty, status: newQty === 0 ? 'OUT_OF_STOCK' : newQty <= item.minStock ? 'LOW_STOCK' : 'IN_STOCK' };
-    }));
+    // Deduct from inventory in database
+    for (const cartItem of cart) {
+      const item = inventory.find(i => i.id === cartItem.itemId);
+      if (item) {
+        const newQty = item.quantity - cartItem.quantity;
+        await updateItem.mutateAsync({ id: item.id, quantity: newQty });
+      }
+    }
 
     setSales(prev => [sale, ...prev]);
     setCart([]);
@@ -114,6 +121,14 @@ export default function MinimarketPage() {
     setRoomNumber('');
     toast({ title: "Sale completed!", description: `Total: €${cartTotal.toFixed(2)}` });
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
