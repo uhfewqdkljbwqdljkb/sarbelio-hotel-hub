@@ -1,3 +1,4 @@
+import { AppRole } from '@/contexts/AuthContext';
 import { 
   LayoutDashboard, 
   CalendarDays, 
@@ -14,20 +15,38 @@ import {
 } from 'lucide-react';
 import { NavItem } from '@/types';
 
-export const NAVIGATION_ITEMS: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { id: 'reservation', label: 'Reservations', path: '/reservations', icon: CalendarDays },
-  { id: 'rooms', label: 'Rooms', path: '/rooms', icon: BedDouble },
-  { id: 'housekeeping', label: 'Housekeeping', path: '/housekeeping', icon: SprayCan },
-  { id: 'restaurant', label: 'Restaurant', path: '/restaurant', icon: UtensilsCrossed },
-  { id: 'minimarket', label: 'Minimarket', path: '/minimarket', icon: Store },
-  { id: 'inventory', label: 'Inventory', path: '/inventory', icon: Box },
-  { id: 'financials', label: 'Financials', path: '/financials', icon: DollarSign },
-  { id: 'calendar', label: 'Calendar', path: '/calendar', icon: CalendarRange },
-  { id: 'concierge', label: 'Concierge', path: '/concierge', icon: UserCheck },
-  { id: 'guests', label: 'Guests', path: '/guests', icon: Users },
-  { id: 'settings', label: 'Settings', path: '/settings', icon: Settings },
+export interface NavItemWithRoles extends NavItem {
+  allowedRoles?: AppRole[];
+}
+
+export const NAVIGATION_ITEMS: NavItemWithRoles[] = [
+  { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, allowedRoles: ['admin'] },
+  { id: 'reservation', label: 'Reservations', path: '/reservations', icon: CalendarDays, allowedRoles: ['admin', 'reception'] },
+  { id: 'rooms', label: 'Rooms', path: '/rooms', icon: BedDouble, allowedRoles: ['admin', 'reception'] },
+  { id: 'housekeeping', label: 'Housekeeping', path: '/housekeeping', icon: SprayCan, allowedRoles: ['admin', 'housekeeping'] },
+  { id: 'restaurant', label: 'Restaurant', path: '/restaurant', icon: UtensilsCrossed, allowedRoles: ['admin', 'fnb'] },
+  { id: 'minimarket', label: 'Minimarket', path: '/minimarket', icon: Store, allowedRoles: ['admin', 'fnb'] },
+  { id: 'inventory', label: 'Inventory', path: '/inventory', icon: Box, allowedRoles: ['admin'] },
+  { id: 'financials', label: 'Financials', path: '/financials', icon: DollarSign, allowedRoles: ['admin'] },
+  { id: 'calendar', label: 'Calendar', path: '/calendar', icon: CalendarRange, allowedRoles: ['admin', 'reception'] },
+  { id: 'concierge', label: 'Concierge', path: '/concierge', icon: UserCheck, allowedRoles: ['admin', 'reception'] },
+  { id: 'guests', label: 'Guests', path: '/guests', icon: Users, allowedRoles: ['admin', 'reception'] },
+  { id: 'settings', label: 'Settings', path: '/settings', icon: Settings, allowedRoles: ['admin'] },
 ];
+
+export const ROLE_LABELS: Record<AppRole, string> = {
+  admin: 'Admin',
+  fnb: 'F&B',
+  housekeeping: 'Housekeeping',
+  reception: 'Reception',
+};
+
+export const ROLE_COLORS: Record<AppRole, string> = {
+  admin: 'bg-purple-100 text-purple-700',
+  fnb: 'bg-orange-100 text-orange-700',
+  housekeeping: 'bg-green-100 text-green-700',
+  reception: 'bg-blue-100 text-blue-700',
+};
 
 export const MOCK_USER = {
   id: 'u1',
