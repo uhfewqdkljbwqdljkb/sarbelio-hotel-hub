@@ -2,15 +2,16 @@ import React from 'react';
 import { BookingNavbar } from './BookingNavbar';
 import { SocialSidebar } from './SocialSidebar';
 import { BookingBar } from './BookingBar';
+import heroBackground from '@/assets/faraya-chabrouh.jpg';
 
 export const HeroSection: React.FC = () => {
   return (
     <div className="relative w-full h-screen flex flex-col overflow-hidden">
-      {/* Background Image - Tropical beach/resort setting */}
+      {/* Background Image - Faraya Chabrouh mountain view */}
       <div className="absolute inset-0 z-0">
         <img 
-          src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?q=80&w=2080&auto=format&fit=crop" 
-          alt="Sarbelio Hotel luxury pool and ocean view" 
+          src={heroBackground} 
+          alt="Sarbelio Hotel mountain view at Faraya Chabrouh"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-slate-900/30 mix-blend-multiply"></div>
