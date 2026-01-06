@@ -1,22 +1,26 @@
 import React from 'react';
 import { RoomCard } from './RoomCard';
-import { useRoomTypes } from '@/hooks/useRooms';
+import { useRooms } from '@/hooks/useRooms';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const roomImages: Record<string, string> = {
-  'Standard': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop',
-  'Deluxe': 'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1974&auto=format&fit=crop',
-  'Suite': 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=2070&auto=format&fit=crop',
-  'Penthouse': 'https://images.unsplash.com/photo-1602002418816-5c0aeef426aa?q=80&w=1974&auto=format&fit=crop',
+  'bedroom': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop',
+  'suite': 'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1974&auto=format&fit=crop',
+  'deluxe': 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=2070&auto=format&fit=crop',
+  'penthouse': 'https://images.unsplash.com/photo-1602002418816-5c0aeef426aa?q=80&w=1974&auto=format&fit=crop',
   'default': 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?q=80&w=1974&auto=format&fit=crop',
 };
 
 export const RoomsSection: React.FC = () => {
-  const { data: roomTypes, isLoading } = useRoomTypes();
+  const { data: rooms, isLoading } = useRooms();
+
+  // Only show available rooms
+  const availableRooms = rooms?.filter(room => room.status === 'AVAILABLE') || [];
 
   const getImageForRoom = (name: string) => {
+    const lowerName = name.toLowerCase();
     for (const key of Object.keys(roomImages)) {
-      if (name.toLowerCase().includes(key.toLowerCase())) {
+      if (lowerName.includes(key)) {
         return roomImages[key];
       }
     }
@@ -54,17 +58,21 @@ export const RoomsSection: React.FC = () => {
               </div>
             ))}
           </div>
+        ) : availableRooms.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-slate-500 text-lg">No rooms available at the moment. Please check back later.</p>
+          </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {roomTypes?.map((room) => (
+            {availableRooms.map((room) => (
               <RoomCard
                 key={room.id}
-                image={room.imageUrl || getImageForRoom(room.name)}
+                image={room.imageUrl !== '/placeholder.svg' ? room.imageUrl : getImageForRoom(room.name)}
                 name={room.name}
-                type="Room Type"
-                capacity={room.maxOccupancy}
-                price={room.basePrice}
-                amenities={room.amenities || ['WiFi', 'AC', 'TV']}
+                type={`Room ${room.roomNumber}`}
+                capacity={room.capacity}
+                price={room.price}
+                amenities={room.amenities.length > 0 ? room.amenities : ['WiFi', 'AC', 'TV']}
                 onBook={() => {
                   const contactSection = document.getElementById('contact');
                   if (contactSection) {
