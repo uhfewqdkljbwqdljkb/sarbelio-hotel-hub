@@ -3,6 +3,7 @@ import { useRooms, useUpdateRoom } from '@/hooks/useRooms';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import AddRoomDialog from '@/components/rooms/AddRoomDialog';
+import EditRoomDialog from '@/components/rooms/EditRoomDialog';
 import { 
   Search, 
   Plus, 
@@ -33,6 +34,8 @@ const RoomsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   
   const { data: rooms = [], isLoading, error } = useRooms();
   const updateRoom = useUpdateRoom();
@@ -88,6 +91,10 @@ const RoomsPage: React.FC = () => {
     }
   };
 
+  const handleEditRoom = (room: Room) => {
+    setSelectedRoom(room);
+    setEditDialogOpen(true);
+  };
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -121,6 +128,7 @@ const RoomsPage: React.FC = () => {
       </div>
 
       <AddRoomDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} />
+      <EditRoomDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} room={selectedRoom} />
 
       {/* Filters Toolbar */}
       <div className="bg-card p-4 rounded-xl shadow-sm border border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -183,6 +191,10 @@ const RoomsPage: React.FC = () => {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={() => handleEditRoom(room)}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Edit Room
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleToggleStatus(room)}>
                         {room.status === 'AVAILABLE' ? (
                           <>
