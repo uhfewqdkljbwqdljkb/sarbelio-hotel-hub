@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { useRooms } from '@/hooks/useRooms';
+import { useRooms, useUpdateRoom } from '@/hooks/useRooms';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import AddRoomDialog from '@/components/rooms/AddRoomDialog';
 import { 
   Search, 
@@ -11,9 +13,21 @@ import {
   XCircle, 
   Clock,
   Wifi,
-  Loader2
+  Loader2,
+  Pencil,
+  Trash2,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
-import { RoomStatus, CleaningStatus } from '@/types';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
+import { RoomStatus, CleaningStatus, Room } from '@/types';
 
 const RoomsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,7 +35,9 @@ const RoomsPage: React.FC = () => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   
   const { data: rooms = [], isLoading, error } = useRooms();
-
+  const updateRoom = useUpdateRoom();
+  const queryClient = useQueryClient();
+  
   const filteredRooms = rooms.filter(room => {
     const matchesSearch = room.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           room.roomNumber.includes(searchTerm);
@@ -46,6 +62,29 @@ const RoomsPage: React.FC = () => {
       case 'IN_PROGRESS': return <Clock className="w-4 h-4 text-yellow-500" />;
       case 'INSPECTED': return <CheckCircle2 className="w-4 h-4 text-blue-500" />;
       default: return null;
+    }
+  };
+
+  const handleDeleteRoom = async (roomId: string) => {
+    if (!confirm('Are you sure you want to delete this room?')) return;
+    
+    try {
+      const { error } = await supabase.from('rooms').delete().eq('id', roomId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      toast.success('Room deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete room');
+    }
+  };
+
+  const handleToggleStatus = async (room: Room) => {
+    const newStatus = room.status === 'AVAILABLE' ? 'OUT_OF_ORDER' : 'AVAILABLE';
+    try {
+      await updateRoom.mutateAsync({ id: room.id, status: newStatus });
+      toast.success(`Room marked as ${newStatus.replace(/_/g, ' ').toLowerCase()}`);
+    } catch (error) {
+      toast.error('Failed to update room status');
     }
   };
 
@@ -137,9 +176,36 @@ const RoomsPage: React.FC = () => {
                   Room {room.roomNumber}
                 </div>
                 <div className="absolute top-4 right-4">
-                  <button className="p-2 bg-foreground/20 backdrop-blur-md rounded-full hover:bg-card text-background hover:text-foreground transition-colors">
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="p-2 bg-foreground/20 backdrop-blur-md rounded-full hover:bg-card text-background hover:text-foreground transition-colors">
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={() => handleToggleStatus(room)}>
+                        {room.status === 'AVAILABLE' ? (
+                          <>
+                            <ToggleLeft className="w-4 h-4 mr-2" />
+                            Mark Unavailable
+                          </>
+                        ) : (
+                          <>
+                            <ToggleRight className="w-4 h-4 mr-2" />
+                            Mark Available
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => handleDeleteRoom(room.id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Room
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-12">
                   <h3 className="text-white font-bold text-lg leading-tight">{room.name}</h3>
