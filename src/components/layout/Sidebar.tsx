@@ -1,8 +1,10 @@
 import React from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { NAVIGATION_ITEMS } from '@/data/constants';
-import { Hotel } from 'lucide-react';
+import { Hotel, LogOut } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 
 interface SidebarProps {
   mobileOpen?: boolean;
@@ -11,6 +13,19 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onMobileOpenChange }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { role, profile, signOut, hasAccess } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
+  // Filter navigation items based on user role
+  const filteredNavItems = NAVIGATION_ITEMS.filter((item) => {
+    if (!item.allowedRoles) return true;
+    return hasAccess(item.allowedRoles);
+  });
 
   const NavContent = () => (
     <>
@@ -24,7 +39,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onMobileOpenChang
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto scrollbar-hide">
-        {NAVIGATION_ITEMS.map((item) => {
+        {filteredNavItems.map((item) => {
           const isActive = location.pathname.startsWith(item.path);
           const Icon = item.icon;
           
@@ -55,9 +70,31 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onMobileOpenChang
         })}
       </nav>
 
-      {/* Footer Info */}
-      <div className="p-4 border-t border-border">
-        <div className="text-xs text-muted-foreground text-center">
+      {/* User Info & Sign Out */}
+      <div className="p-4 border-t border-border space-y-3">
+        {profile && (
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-8 h-8 rounded-full bg-primary-200 flex items-center justify-center text-primary-800 font-semibold text-sm">
+              {profile.full_name?.[0]?.toUpperCase() || profile.email[0].toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">
+                {profile.full_name || profile.email}
+              </p>
+              <p className="text-xs text-muted-foreground capitalize">{role}</p>
+            </div>
+          </div>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleSignOut}
+          className="w-full justify-start text-muted-foreground hover:text-foreground"
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Sign Out
+        </Button>
+        <div className="text-xs text-muted-foreground text-center pt-2">
           © 2024 Sarbelio Inc.
         </div>
       </div>
