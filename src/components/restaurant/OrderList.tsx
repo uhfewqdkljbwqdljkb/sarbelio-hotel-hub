@@ -1,6 +1,6 @@
 import React from 'react';
 import { POSOrder, OrderStatus } from '@/types/restaurant';
-import { Clock, Users, ChefHat, Check, CreditCard } from 'lucide-react';
+import { Clock, Users, ChefHat, Check, CreditCard, Car, User } from 'lucide-react';
 
 interface OrderListProps {
   orders: POSOrder[];
@@ -66,29 +66,54 @@ const OrderList: React.FC<OrderListProps> = ({ orders, onOrderClick }) => {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {activeOrders.map(order => {
         const statusConfig = getStatusConfig(order.status);
+        const isDriveThru = order.orderType === 'DRIVE_THRU';
         
         return (
           <button
             key={order.id}
             onClick={() => onOrderClick(order)}
-            className="bg-card p-4 rounded-xl border border-border hover:border-primary hover:shadow-md transition-all text-left"
+            className={`bg-card p-4 rounded-xl border hover:shadow-md transition-all text-left ${
+              isDriveThru ? 'border-amber-300 hover:border-amber-400' : 'border-border hover:border-primary'
+            }`}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center">
-                <span className="text-xl font-bold text-foreground">
-                  Table {order.tableNumber}
-                </span>
-                <div className="ml-2 flex items-center text-muted-foreground text-sm">
-                  <Users className="w-3 h-3 mr-1" />
-                  {order.guestCount}
-                </div>
+                {isDriveThru ? (
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-xs font-medium">
+                      <Car className="w-3 h-3" />
+                      Drive-Thru
+                    </span>
+                    <span className="text-lg font-bold text-foreground">
+                      {order.tableNumber}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-xl font-bold text-foreground">
+                    Table {order.tableNumber}
+                  </span>
+                )}
+                {!isDriveThru && (
+                  <div className="ml-2 flex items-center text-muted-foreground text-sm">
+                    <Users className="w-3 h-3 mr-1" />
+                    {order.guestCount}
+                  </div>
+                )}
               </div>
               <span className={`px-2 py-1 rounded-full text-xs font-semibold flex items-center border ${statusConfig.color}`}>
                 {statusConfig.icon}
                 <span className="ml-1">{statusConfig.label}</span>
               </span>
             </div>
+
+            {/* Customer Name for Drive-Thru */}
+            {isDriveThru && order.guestName && (
+              <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+                <User className="w-3 h-3" />
+                {order.guestName}
+              </div>
+            )}
 
             {/* Items */}
             <div className="space-y-1 mb-3">

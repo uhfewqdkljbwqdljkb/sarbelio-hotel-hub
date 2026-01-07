@@ -4,6 +4,7 @@ import { RestaurantTable, POSOrder, MenuCategory, MenuItem } from '@/types/resta
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import TableGrid from '@/components/restaurant/TableGrid';
 import POSInterface from '@/components/restaurant/POSInterface';
+import DriveThruPOS from '@/components/restaurant/DriveThruPOS';
 import OrderList from '@/components/restaurant/OrderList';
 import MenuManager from '@/components/restaurant/MenuManager';
 import FloorPlanEditor from '@/components/restaurant/FloorPlanEditor';
@@ -16,16 +17,18 @@ import {
   List,
   Settings,
   X,
-  Loader2
+  Loader2,
+  Car
 } from 'lucide-react';
 
-type ViewMode = 'FLOOR' | 'POS' | 'ORDERS' | 'SETTINGS';
+type ViewMode = 'FLOOR' | 'POS' | 'ORDERS' | 'SETTINGS' | 'DRIVE_THRU';
 type SettingsTab = 'MENU' | 'FLOOR';
 
 const RestaurantPage: React.FC = () => {
   const [view, setView] = useState<ViewMode>('FLOOR');
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('MENU');
   const [activeTable, setActiveTable] = useState<RestaurantTable | null>(null);
+  const [driveThruOrderNumber, setDriveThruOrderNumber] = useState(1);
   
   const { data: tables = [], isLoading: tablesLoading } = useRestaurantTables();
   const { data: orders = [], isLoading: ordersLoading } = usePosOrders();
@@ -40,6 +43,7 @@ const RestaurantPage: React.FC = () => {
 
   // KPIs
   const activeOrdersCount = orders.filter(o => o.status !== 'PAID').length;
+  const driveThruOrdersCount = orders.filter(o => o.orderType === 'DRIVE_THRU' && o.status !== 'PAID').length;
   const occupiedTables = tables.filter(t => t.status === 'OCCUPIED').length;
   const totalRevenueToday = orders.reduce((sum, o) => sum + o.totalAmount, 0);
   const avgOrderTime = '18m';
@@ -92,12 +96,31 @@ const RestaurantPage: React.FC = () => {
 
     setView('FLOOR');
     setActiveTable(null);
+    // Increment drive-thru order number for next order
+    if (updatedOrder.orderType === 'DRIVE_THRU') {
+      setDriveThruOrderNumber(prev => prev + 1);
+    }
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Show Drive-Thru POS
+  if (view === 'DRIVE_THRU') {
+    return (
+      <div className="h-[calc(100vh-7rem)]">
+        <DriveThruPOS 
+          categories={categories}
+          menuItems={menuItems}
+          orderNumber={driveThruOrderNumber}
+          onClose={() => setView('FLOOR')} 
+          onSaveOrder={handleSaveOrder}
+        />
       </div>
     );
   }
@@ -215,6 +238,15 @@ const RestaurantPage: React.FC = () => {
               Orders
             </button>
           </div>
+          
+          {/* Drive-Thru Button */}
+          <button
+            onClick={() => setView('DRIVE_THRU')}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium flex items-center transition-colors"
+          >
+            <Car className="w-4 h-4 mr-2" />
+            Drive-Thru
+          </button>
           <button
             onClick={() => setView('SETTINGS')}
             className="px-3 py-2 bg-secondary rounded-lg text-sm font-medium flex items-center hover:bg-secondary/80"
@@ -226,7 +258,7 @@ const RestaurantPage: React.FC = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <DashboardCard className="flex items-center p-4">
           <div className="p-3 bg-orange-100 text-orange-600 rounded-full mr-4">
             <UtensilsCrossed className="w-6 h-6" />
@@ -234,6 +266,15 @@ const RestaurantPage: React.FC = () => {
           <div>
             <p className="text-sm text-muted-foreground">Active Orders</p>
             <p className="text-xl font-bold text-foreground">{activeOrdersCount}</p>
+          </div>
+        </DashboardCard>
+        <DashboardCard className="flex items-center p-4">
+          <div className="p-3 bg-amber-100 text-amber-600 rounded-full mr-4">
+            <Car className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Drive-Thru</p>
+            <p className="text-xl font-bold text-foreground">{driveThruOrdersCount}</p>
           </div>
         </DashboardCard>
         <DashboardCard className="flex items-center p-4">

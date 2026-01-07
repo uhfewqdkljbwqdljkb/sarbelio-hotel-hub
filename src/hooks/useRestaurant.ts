@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { RestaurantTable, POSOrder, MenuCategory, MenuItem, OrderItem, TableStatus, OrderStatus, TableZone } from '@/types/restaurant';
+import { RestaurantTable, POSOrder, MenuCategory, MenuItem, OrderItem, TableStatus, OrderStatus, TableZone, OrderType } from '@/types/restaurant';
 
 interface DbTable {
   id: string;
@@ -13,12 +13,14 @@ interface DbTable {
 
 interface DbOrder {
   id: string;
-  table_id: string;
+  table_id: string | null;
   table_number: string;
   status: string;
   total_amount: number;
   guest_count: number;
   opened_at: string;
+  order_type?: string;
+  guest_name?: string;
 }
 
 interface DbOrderItem {
@@ -109,13 +111,15 @@ export function usePosOrders() {
       
       return orders.map((o): POSOrder => ({
         id: o.id,
-        tableId: o.table_id,
+        tableId: o.table_id || 'drive-thru',
         tableNumber: o.table_number,
         status: o.status as OrderStatus,
         totalAmount: o.total_amount,
         guestCount: o.guest_count,
         openedAt: o.opened_at,
         items: itemsMap.get(o.id) || [],
+        orderType: (o.order_type as OrderType) || 'DINE_IN',
+        guestName: o.guest_name,
       }));
     },
   });
@@ -168,15 +172,19 @@ export function useCreateOrder() {
   
   return useMutation({
     mutationFn: async (order: Omit<POSOrder, 'id'>) => {
+      const isDriveThru = order.orderType === 'DRIVE_THRU' || order.tableId === 'drive-thru';
+      
       const { data: orderData, error: orderError } = await supabase
         .from('pos_orders')
         .insert({
-          table_id: order.tableId,
+          table_id: isDriveThru ? null : order.tableId,
           table_number: order.tableNumber,
           status: order.status,
           total_amount: order.totalAmount,
           guest_count: order.guestCount || 1,
           opened_at: order.openedAt,
+          order_type: order.orderType || 'DINE_IN',
+          guest_name: order.guestName,
         })
         .select()
         .single();
@@ -198,14 +206,16 @@ export function useCreateOrder() {
         if (itemsError) throw itemsError;
       }
       
-      // Update table status
-      await supabase
-        .from('restaurant_tables')
-        .update({ 
-          status: order.status === 'PAID' ? 'CLEANING' : 'OCCUPIED',
-          current_order_id: order.status === 'PAID' ? null : orderData.id 
-        })
-        .eq('id', order.tableId);
+      // Update table status only for dine-in orders
+      if (!isDriveThru) {
+        await supabase
+          .from('restaurant_tables')
+          .update({ 
+            status: order.status === 'PAID' ? 'CLEANING' : 'OCCUPIED',
+            current_order_id: order.status === 'PAID' ? null : orderData.id 
+          })
+          .eq('id', order.tableId);
+      }
       
       return orderData;
     },

@@ -3,6 +3,7 @@
 export type TableStatus = 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING';
 export type OrderStatus = 'OPEN' | 'KITCHEN' | 'SERVED' | 'PAID';
 export type TableZone = 'INDOOR' | 'TERRACE' | 'BAR';
+export type OrderType = 'DINE_IN' | 'DRIVE_THRU';
 
 export interface MenuCategory {
   id: string;
@@ -47,4 +48,6 @@ export interface POSOrder {
   totalAmount: number;
   openedAt: string;
   guestCount?: number;
+  orderType?: OrderType;
+  guestName?: string;
 }
