@@ -781,8 +781,10 @@ export type Database = {
           closed_at: string | null
           created_at: string | null
           guest_count: number | null
+          guest_name: string | null
           id: string
           opened_at: string | null
+          order_type: string | null
           status: Database["public"]["Enums"]["order_status"] | null
           table_id: string | null
           table_number: string
@@ -793,8 +795,10 @@ export type Database = {
           closed_at?: string | null
           created_at?: string | null
           guest_count?: number | null
+          guest_name?: string | null
           id?: string
           opened_at?: string | null
+          order_type?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
           table_id?: string | null
           table_number: string
@@ -805,8 +809,10 @@ export type Database = {
           closed_at?: string | null
           created_at?: string | null
           guest_count?: number | null
+          guest_name?: string | null
           id?: string
           opened_at?: string | null
+          order_type?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
           table_id?: string | null
           table_number?: string
