@@ -1,6 +1,7 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -8,8 +9,9 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, role, loading, hasAccess } = useAuth();
+  const { user, role, loading, hasAccess, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -23,12 +25,27 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // If no role assigned yet, wait or redirect
+  // Role fetch finished, but no role is assigned.
   if (!role) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-700" />
-        <p className="text-muted-foreground">Loading your permissions...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4 px-6">
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl font-bold text-foreground">Permissions not set</h1>
+          <p className="text-muted-foreground">
+            Your account does not have a staff role assigned yet. Please contact an administrator.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              await signOut();
+              navigate('/auth');
+            }}
+          >
+            Back to login
+          </Button>
+        </div>
       </div>
     );
   }
@@ -39,9 +56,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold text-foreground">Access Denied</h1>
-          <p className="text-muted-foreground">
-            You don't have permission to access this page.
-          </p>
+          <p className="text-muted-foreground">You don't have permission to access this page.</p>
           <p className="text-sm text-muted-foreground">
             Your role: <span className="font-medium capitalize">{role}</span>
           </p>
