@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useUpdateRoom } from '@/hooks/useRooms';
-import { supabase } from '@/integrations/supabase/client';
+import { useRoomImages, useCreateRoomImage, useDeleteRoomImage, uploadRoomImage } from '@/hooks/useRoomImages';
 import { Room } from '@/types';
 import {
   Dialog,
@@ -24,7 +24,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Loader2, X, Image, Plus } from 'lucide-react';
+import { Loader2, X, Plus } from 'lucide-react';
+import RoomImageUploader from './RoomImageUploader';
 
 const COMMON_AMENITIES = [
   'WiFi',
@@ -46,12 +47,23 @@ const roomSchema = z.object({
   name: z.string().min(1, 'Room name is required'),
   floor: z.coerce.number().min(1, 'Floor must be at least 1'),
   price: z.coerce.number().min(0, 'Price must be positive'),
+  weekdayPrice: z.coerce.number().min(0, 'Price must be positive').optional().or(z.literal('')),
+  weekendPrice: z.coerce.number().min(0, 'Price must be positive').optional().or(z.literal('')),
   capacity: z.coerce.number().min(1, 'Capacity must be at least 1'),
   size: z.coerce.number().min(0, 'Size must be positive'),
   description: z.string().optional(),
 });
 
 type RoomFormData = z.infer<typeof roomSchema>;
+
+interface ImagePreview {
+  id: string;
+  url: string;
+  file?: File;
+  isPrimary: boolean;
+  isUploading?: boolean;
+  isExisting?: boolean;
+}
 
 interface EditRoomDialogProps {
   open: boolean;
@@ -61,11 +73,14 @@ interface EditRoomDialogProps {
 
 const EditRoomDialog: React.FC<EditRoomDialogProps> = ({ open, onOpenChange, room }) => {
   const updateRoom = useUpdateRoom();
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const createRoomImage = useCreateRoomImage();
+  const deleteRoomImage = useDeleteRoomImage();
+  const { data: existingImages } = useRoomImages(room?.id);
+  const [images, setImages] = useState<ImagePreview[]>([]);
   const [uploading, setUploading] = useState(false);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [customAmenity, setCustomAmenity] = useState('');
+  const [deletedImageIds, setDeletedImageIds] = useState<string[]>([]);
 
   const form = useForm<RoomFormData>({
     resolver: zodResolver(roomSchema),
@@ -74,6 +89,8 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({ open, onOpenChange, roo
       name: '',
       floor: 1,
       price: 100,
+      weekdayPrice: '',
+      weekendPrice: '',
       capacity: 2,
       size: 300,
       description: '',
@@ -88,15 +105,50 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({ open, onOpenChange, roo
         name: room.name,
         floor: room.floor,
         price: room.price,
+        weekdayPrice: room.weekdayPrice || '',
+        weekendPrice: room.weekendPrice || '',
         capacity: room.capacity,
         size: room.size || 0,
         description: room.description || '',
       });
       setSelectedAmenities(room.amenities || []);
-      setImagePreview(room.imageUrl !== '/placeholder.svg' ? room.imageUrl : null);
-      setImageFile(null);
+      setDeletedImageIds([]);
     }
   }, [room, open, form]);
+
+  // Load existing images
+  useEffect(() => {
+    if (existingImages && existingImages.length > 0 && open) {
+      const mappedImages: ImagePreview[] = existingImages.map((img) => ({
+        id: img.id,
+        url: img.imageUrl,
+        isPrimary: img.isPrimary,
+        isExisting: true,
+      }));
+      setImages(mappedImages);
+    } else if (room && open && room.imageUrl && room.imageUrl !== '/placeholder.svg') {
+      // Fallback to single image if no room_images records exist
+      setImages([{
+        id: 'legacy-image',
+        url: room.imageUrl,
+        isPrimary: true,
+        isExisting: true,
+      }]);
+    } else if (open) {
+      setImages([]);
+    }
+  }, [existingImages, room, open]);
+
+  const handleImagesChange = (newImages: ImagePreview[]) => {
+    // Track deleted existing images
+    const currentIds = new Set(newImages.map(img => img.id));
+    const newlyDeletedIds = images
+      .filter(img => img.isExisting && !currentIds.has(img.id))
+      .map(img => img.id);
+    
+    setDeletedImageIds(prev => [...prev, ...newlyDeletedIds]);
+    setImages(newImages);
+  };
 
   const toggleAmenity = (amenity: string) => {
     setSelectedAmenities(prev => 
@@ -117,59 +169,47 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({ open, onOpenChange, roo
     setSelectedAmenities(prev => prev.filter(a => a !== amenity));
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image must be less than 5MB');
-        return;
-      }
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removeImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-  };
-
-  const uploadImage = async (file: File): Promise<string | null> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = `rooms/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('room-images')
-      .upload(filePath, file);
-
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      throw uploadError;
-    }
-
-    const { data } = supabase.storage
-      .from('room-images')
-      .getPublicUrl(filePath);
-
-    return data.publicUrl;
-  };
-
   const onSubmit = async (data: RoomFormData) => {
     if (!room) return;
     
     try {
       setUploading(true);
-      let imageUrl: string | undefined = room.imageUrl;
 
-      if (imageFile) {
-        imageUrl = await uploadImage(imageFile) || undefined;
-      } else if (!imagePreview) {
-        imageUrl = undefined;
+      // Delete removed images
+      for (const imageId of deletedImageIds) {
+        if (imageId !== 'legacy-image') {
+          await deleteRoomImage.mutateAsync({ id: imageId, roomId: room.id });
+        }
+      }
+
+      // Upload new images and create records
+      const newImages = images.filter(img => img.file);
+      for (let i = 0; i < newImages.length; i++) {
+        const img = newImages[i];
+        if (img.file) {
+          const url = await uploadRoomImage(img.file);
+          await createRoomImage.mutateAsync({
+            roomId: room.id,
+            imageUrl: url,
+            displayOrder: images.indexOf(img),
+            isPrimary: img.isPrimary,
+          });
+        }
+      }
+
+      // Find primary image for main image_url
+      const primaryImage = images.find(img => img.isPrimary);
+      let mainImageUrl = room.imageUrl;
+      
+      if (primaryImage) {
+        if (primaryImage.file) {
+          // Already uploaded above, find it
+          mainImageUrl = await uploadRoomImage(primaryImage.file);
+        } else if (primaryImage.isExisting) {
+          mainImageUrl = primaryImage.url;
+        }
+      } else if (images.length === 0) {
+        mainImageUrl = undefined;
       }
 
       await updateRoom.mutateAsync({
@@ -178,15 +218,19 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({ open, onOpenChange, roo
         name: data.name,
         floor: data.floor,
         price: data.price,
+        weekdayPrice: data.weekdayPrice ? Number(data.weekdayPrice) : undefined,
+        weekendPrice: data.weekendPrice ? Number(data.weekendPrice) : undefined,
         capacity: data.capacity,
         size: data.size,
         description: data.description || '',
         amenities: selectedAmenities.length > 0 ? selectedAmenities : ['WiFi', 'TV', 'Air Conditioning'],
-        imageUrl,
+        imageUrl: mainImageUrl,
       });
+      
       toast.success('Room updated successfully');
       onOpenChange(false);
     } catch (error) {
+      console.error('Failed to update room:', error);
       toast.error('Failed to update room');
     } finally {
       setUploading(false);
@@ -195,48 +239,18 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({ open, onOpenChange, roo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Room</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Image Upload */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Room Image</label>
-              {imagePreview ? (
-                <div className="relative w-full h-40 rounded-lg overflow-hidden border border-border">
-                  <img 
-                    src={imagePreview} 
-                    alt="Room preview" 
-                    className="w-full h-full object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={removeImage}
-                    className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <Image className="w-8 h-8 mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      <span className="font-medium text-primary">Click to upload</span> or drag and drop
-                    </p>
-                    <p className="text-xs text-muted-foreground">PNG, JPG up to 5MB</p>
-                  </div>
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    accept="image/*"
-                    onChange={handleImageChange}
-                  />
-                </label>
-              )}
-            </div>
+            {/* Multi-Image Upload */}
+            <RoomImageUploader
+              images={images}
+              onImagesChange={handleImagesChange}
+              maxImages={10}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
@@ -281,20 +295,66 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({ open, onOpenChange, roo
               )}
             />
 
-            <div className="grid grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Price/Night ($)</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            {/* Pricing Section */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium">Pricing</label>
+              <div className="grid grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">Base Price ($)</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="weekdayPrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">Weekday ($)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="Optional" 
+                          {...field}
+                          value={field.value || ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="weekendPrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">Weekend ($)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="Optional" 
+                          {...field}
+                          value={field.value || ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Leave weekday/weekend blank to use base price for all days.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="capacity"

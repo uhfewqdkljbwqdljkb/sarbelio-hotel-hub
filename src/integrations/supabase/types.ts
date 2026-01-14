@@ -1081,6 +1081,41 @@ export type Database = {
         }
         Relationships: []
       }
+      room_images: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          image_url: string
+          is_primary: boolean
+          room_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url: string
+          is_primary?: boolean
+          room_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string
+          is_primary?: boolean
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_images_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_types: {
         Row: {
           amenities: string[] | null
@@ -1138,6 +1173,8 @@ export type Database = {
           size: number | null
           status: Database["public"]["Enums"]["room_status"] | null
           updated_at: string | null
+          weekday_price: number | null
+          weekend_price: number | null
         }
         Insert: {
           amenities?: string[] | null
@@ -1158,6 +1195,8 @@ export type Database = {
           size?: number | null
           status?: Database["public"]["Enums"]["room_status"] | null
           updated_at?: string | null
+          weekday_price?: number | null
+          weekend_price?: number | null
         }
         Update: {
           amenities?: string[] | null
@@ -1178,6 +1217,8 @@ export type Database = {
           size?: number | null
           status?: Database["public"]["Enums"]["room_status"] | null
           updated_at?: string | null
+          weekday_price?: number | null
+          weekend_price?: number | null
         }
         Relationships: [
           {

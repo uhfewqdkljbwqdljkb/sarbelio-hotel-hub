@@ -10,6 +10,8 @@ interface DbRoom {
   name: string | null;
   description: string | null;
   price: number;
+  weekday_price: number | null;
+  weekend_price: number | null;
   capacity: number;
   amenities: string[];
   image_url: string | null;
@@ -38,6 +40,8 @@ const mapDbRoomToRoom = (dbRoom: DbRoom): Room => ({
   name: dbRoom.name || `Room ${dbRoom.room_number}`,
   description: dbRoom.description || '',
   price: dbRoom.price,
+  weekdayPrice: dbRoom.weekday_price ?? undefined,
+  weekendPrice: dbRoom.weekend_price ?? undefined,
   capacity: dbRoom.capacity,
   amenities: dbRoom.amenities || [],
   imageUrl: dbRoom.image_url || '/placeholder.svg',
@@ -102,6 +106,8 @@ export function useCreateRoom() {
           name: room.name,
           description: room.description,
           price: room.price,
+          weekday_price: room.weekdayPrice ?? null,
+          weekend_price: room.weekendPrice ?? null,
           capacity: room.capacity,
           amenities: room.amenities || [],
           image_url: room.imageUrl,
@@ -135,6 +141,8 @@ export function useUpdateRoom() {
           name: updates.name,
           description: updates.description,
           price: updates.price,
+          weekday_price: updates.weekdayPrice ?? null,
+          weekend_price: updates.weekendPrice ?? null,
           capacity: updates.capacity,
           amenities: updates.amenities,
           image_url: updates.imageUrl,

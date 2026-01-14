@@ -30,13 +30,24 @@ export interface Room {
   name: string;
   description: string;
   price: number;
+  weekdayPrice?: number;
+  weekendPrice?: number;
   capacity: number;
   amenities: string[];
   imageUrl: string;
+  images?: RoomImage[];
   size: number;
   status: RoomStatus;
   cleaningStatus: CleaningStatus;
   nextReservation?: string;
+}
+
+export interface RoomImage {
+  id: string;
+  roomId: string;
+  imageUrl: string;
+  displayOrder: number;
+  isPrimary: boolean;
 }
 
 export interface RoomType {
