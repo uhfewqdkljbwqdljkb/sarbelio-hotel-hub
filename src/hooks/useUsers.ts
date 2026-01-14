@@ -17,31 +17,28 @@ export function useUsers() {
   return useQuery({
     queryKey: ['users-with-roles'],
     queryFn: async (): Promise<UserWithRole[]> => {
-      // Fetch profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Use RPC function to get all users with roles (bypasses RLS issues)
+      const { data, error } = await supabase.rpc('get_all_users_with_roles');
 
-      if (profilesError) throw profilesError;
+      if (error) throw error;
 
-      // Fetch roles
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('*');
-
-      if (rolesError) throw rolesError;
-
-      // Combine profiles with roles
-      const usersWithRoles = profiles.map((profile) => {
-        const userRole = roles.find((r) => r.user_id === profile.user_id);
-        return {
-          ...profile,
-          role: userRole?.role as AppRole | null,
-        };
-      });
-
-      return usersWithRoles;
+      return (data || []).map((user: {
+        id: string;
+        user_id: string;
+        full_name: string | null;
+        email: string;
+        avatar_url: string | null;
+        created_at: string;
+        role: AppRole | null;
+      }) => ({
+        id: user.id,
+        user_id: user.user_id,
+        full_name: user.full_name,
+        email: user.email,
+        avatar_url: user.avatar_url,
+        created_at: user.created_at,
+        role: user.role,
+      }));
     },
   });
 }

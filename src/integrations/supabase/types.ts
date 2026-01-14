@@ -1397,6 +1397,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_is_admin: { Args: { _user_id: string }; Returns: boolean }
+      get_all_users_with_roles: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
