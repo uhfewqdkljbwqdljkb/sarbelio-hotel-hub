@@ -1,13 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { InventoryItem, Supplier, PurchaseOrder, OrderTemplate, InventoryCategory, ItemDestination, StockStatus, PurchaseOrderItem } from '@/types/inventory';
+import { InventoryItem, Supplier, PurchaseOrder, OrderTemplate, InventoryCategory, ItemDestination, StockStatus, PurchaseOrderItem, OrderStats } from '@/types/inventory';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 // Transform database row to frontend type
 const transformInventoryItem = (row: any): InventoryItem => ({
   id: row.id,
   name: row.name,
   sku: row.sku || '',
-  category: (row.category_id ? 'FOOD' : 'FOOD') as InventoryCategory, // Will be updated when we have categories
+  category: (row.category_id ? 'FOOD' : 'FOOD') as InventoryCategory,
   quantity: row.quantity || 0,
   unit: row.unit || 'pcs',
   minStock: row.min_quantity || 0,
@@ -15,6 +16,7 @@ const transformInventoryItem = (row: any): InventoryItem => ({
   unitCost: Number(row.unit_cost) || 0,
   sellPrice: row.sell_price ? Number(row.sell_price) : undefined,
   supplier: row.supplier || undefined,
+  supplierId: row.supplier_id || undefined,
   status: getStockStatus(row.quantity || 0, row.min_quantity || 0),
   lastRestocked: row.last_restocked,
   location: row.location || undefined,
@@ -50,9 +52,11 @@ const transformPurchaseOrder = (row: any, items: PurchaseOrderItem[]): PurchaseO
   totalAmount: Number(row.total_amount) || 0,
   createdAt: row.created_at,
   expectedDelivery: row.expected_delivery,
+  receivedAt: row.received_at,
   notes: row.notes,
   isTemplate: row.is_template,
   templateName: row.template_name,
+  invoiceId: row.invoice_id,
 });
 
 const transformOrderTemplate = (row: any, items: PurchaseOrderItem[]): OrderTemplate => ({
@@ -85,19 +89,20 @@ export function useCreateInventoryItem() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (item: Omit<InventoryItem, 'id' | 'status'>) => {
+    mutationFn: async (item: Omit<InventoryItem, 'id' | 'status' | 'quantity'>) => {
       const { data, error } = await supabase
         .from('inventory_items')
         .insert({
           name: item.name,
           sku: item.sku,
-          quantity: item.quantity,
+          quantity: 0, // Quantity starts at 0, only updated via orders
           unit: item.unit,
           min_quantity: item.minStock,
           max_quantity: item.maxStock,
           unit_cost: item.unitCost,
           sell_price: item.sellPrice,
           supplier: item.supplier,
+          supplier_id: item.supplierId || null,
           location: item.location,
           destination: item.destination,
           barcode: item.barcode,
@@ -120,23 +125,25 @@ export function useUpdateInventoryItem() {
   
   return useMutation({
     mutationFn: async ({ id, ...item }: Partial<InventoryItem> & { id: string }) => {
+      const updateData: Record<string, any> = {};
+      
+      if (item.name !== undefined) updateData.name = item.name;
+      if (item.sku !== undefined) updateData.sku = item.sku;
+      if (item.unit !== undefined) updateData.unit = item.unit;
+      if (item.minStock !== undefined) updateData.min_quantity = item.minStock;
+      if (item.maxStock !== undefined) updateData.max_quantity = item.maxStock;
+      if (item.unitCost !== undefined) updateData.unit_cost = item.unitCost;
+      if (item.sellPrice !== undefined) updateData.sell_price = item.sellPrice;
+      if (item.supplier !== undefined) updateData.supplier = item.supplier;
+      if (item.supplierId !== undefined) updateData.supplier_id = item.supplierId || null;
+      if (item.location !== undefined) updateData.location = item.location;
+      if (item.destination !== undefined) updateData.destination = item.destination;
+      if (item.barcode !== undefined) updateData.barcode = item.barcode;
+      if (item.imageUrl !== undefined) updateData.image_url = item.imageUrl;
+      
       const { data, error } = await supabase
         .from('inventory_items')
-        .update({
-          name: item.name,
-          sku: item.sku,
-          quantity: item.quantity,
-          unit: item.unit,
-          min_quantity: item.minStock,
-          max_quantity: item.maxStock,
-          unit_cost: item.unitCost,
-          sell_price: item.sellPrice,
-          supplier: item.supplier,
-          location: item.location,
-          destination: item.destination,
-          barcode: item.barcode,
-          image_url: item.imageUrl,
-        })
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
@@ -291,11 +298,55 @@ export function usePurchaseOrders() {
   });
 }
 
+export function useOrderStats() {
+  return useQuery({
+    queryKey: ['order-stats'],
+    queryFn: async (): Promise<OrderStats> => {
+      const now = new Date();
+      const monthStart = format(startOfMonth(now), 'yyyy-MM-dd');
+      const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd');
+      
+      const { data: orders, error } = await supabase
+        .from('purchase_orders')
+        .select('*');
+      
+      if (error) throw error;
+      
+      const allOrders = orders || [];
+      const receivedOrders = allOrders.filter(o => o.status === 'RECEIVED');
+      const pendingOrders = allOrders.filter(o => ['DRAFT', 'PENDING', 'APPROVED', 'ORDERED'].includes(o.status || ''));
+      const cancelledOrders = allOrders.filter(o => o.status === 'CANCELLED');
+      
+      const thisMonthOrders = allOrders.filter(o => {
+        const orderDate = o.created_at?.split('T')[0];
+        return orderDate && orderDate >= monthStart && orderDate <= monthEnd;
+      });
+      
+      const totalSpent = receivedOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+      const spentThisMonth = thisMonthOrders
+        .filter(o => o.status === 'RECEIVED')
+        .reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+      
+      return {
+        totalOrders: allOrders.length,
+        pendingOrders: pendingOrders.length,
+        receivedOrders: receivedOrders.length,
+        cancelledOrders: cancelledOrders.length,
+        totalSpent,
+        averageOrderValue: receivedOrders.length > 0 ? totalSpent / receivedOrders.length : 0,
+        ordersThisMonth: thisMonthOrders.length,
+        spentThisMonth,
+      };
+    },
+  });
+}
+
 export function useCreatePurchaseOrder() {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async (order: Omit<PurchaseOrder, 'id'>) => {
+      // Create the purchase order
       const { data: orderData, error: orderError } = await supabase
         .from('purchase_orders')
         .insert({
@@ -329,10 +380,64 @@ export function useCreatePurchaseOrder() {
         if (itemsError) throw itemsError;
       }
       
+      // Create invoice for this order (PAYABLE type)
+      const invoiceNumber = `INV-${order.orderNumber}`;
+      const dueDate = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'); // 30 days from now
+      
+      const invoiceItems = order.items.map(item => ({
+        description: item.itemName,
+        quantity: item.quantity,
+        unitPrice: item.unitCost,
+        total: item.total,
+      }));
+      
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from('invoices')
+        .insert({
+          invoice_number: invoiceNumber,
+          invoice_type: 'PAYABLE',
+          customer_or_vendor: order.supplierName,
+          amount: order.totalAmount,
+          due_date: dueDate,
+          status: 'PENDING',
+          items: invoiceItems,
+        })
+        .select()
+        .single();
+      
+      if (invoiceError) throw invoiceError;
+      
+      // Link invoice to purchase order
+      await supabase
+        .from('purchase_orders')
+        .update({ invoice_id: invoiceData.id })
+        .eq('id', orderData.id);
+      
+      // Update supplier's total orders count
+      if (order.supplierId) {
+        const { data: supplier } = await supabase
+          .from('suppliers')
+          .select('total_orders')
+          .eq('id', order.supplierId)
+          .single();
+        
+        if (supplier) {
+          await supabase
+            .from('suppliers')
+            .update({ total_orders: (supplier.total_orders || 0) + 1 })
+            .eq('id', order.supplierId);
+        }
+      }
+      
       return transformPurchaseOrder(orderData, order.items);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      queryClient.invalidateQueries({ queryKey: ['order-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['combined-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
     },
   });
 }
@@ -342,15 +447,71 @@ export function useUpdatePurchaseOrderStatus() {
   
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: PurchaseOrder['status'] }) => {
+      const updateData: Record<string, any> = { status };
+      
+      if (status === 'RECEIVED') {
+        updateData.received_at = new Date().toISOString();
+        
+        // Get order items and update inventory quantities
+        const { data: orderItems } = await supabase
+          .from('purchase_order_items')
+          .select('*')
+          .eq('order_id', id);
+        
+        if (orderItems) {
+          for (const item of orderItems) {
+            if (item.item_id) {
+              const { data: inventoryItem } = await supabase
+                .from('inventory_items')
+                .select('quantity')
+                .eq('id', item.item_id)
+                .single();
+              
+              if (inventoryItem) {
+                await supabase
+                  .from('inventory_items')
+                  .update({ 
+                    quantity: (inventoryItem.quantity || 0) + item.quantity,
+                    last_restocked: new Date().toISOString(),
+                  })
+                  .eq('id', item.item_id);
+              }
+            }
+          }
+        }
+        
+        // Update the invoice status to PAID when order is received
+        const { data: order } = await supabase
+          .from('purchase_orders')
+          .select('invoice_id')
+          .eq('id', id)
+          .single();
+        
+        if (order?.invoice_id) {
+          await supabase
+            .from('invoices')
+            .update({ 
+              status: 'PAID',
+              paid_at: new Date().toISOString(),
+            })
+            .eq('id', order.invoice_id);
+        }
+      }
+      
       const { error } = await supabase
         .from('purchase_orders')
-        .update({ status })
+        .update(updateData)
         .eq('id', id);
       
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['order-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['combined-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
     },
   });
 }
@@ -446,4 +607,12 @@ export function useDeleteOrderTemplate() {
       queryClient.invalidateQueries({ queryKey: ['order-templates'] });
     },
   });
+}
+
+// Get items by supplier
+export function useItemsBySupplier(supplierId: string | null) {
+  const { data: items = [] } = useInventoryItems();
+  
+  if (!supplierId) return [];
+  return items.filter(item => item.supplierId === supplierId);
 }

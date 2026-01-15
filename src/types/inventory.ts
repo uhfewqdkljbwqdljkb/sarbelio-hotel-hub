@@ -15,6 +15,7 @@ export interface InventoryItem {
   unitCost: number;
   sellPrice?: number;
   supplier?: string;
+  supplierId?: string;
   status: StockStatus;
   lastRestocked?: string;
   location?: string;
@@ -44,9 +45,11 @@ export interface PurchaseOrder {
   totalAmount: number;
   createdAt: string;
   expectedDelivery?: string;
+  receivedAt?: string;
   notes?: string;
   isTemplate?: boolean;
   templateName?: string;
+  invoiceId?: string;
 }
 
 export interface PurchaseOrderItem {
@@ -65,4 +68,15 @@ export interface OrderTemplate {
   items: PurchaseOrderItem[];
   totalAmount: number;
   createdAt: string;
+}
+
+export interface OrderStats {
+  totalOrders: number;
+  pendingOrders: number;
+  receivedOrders: number;
+  cancelledOrders: number;
+  totalSpent: number;
+  averageOrderValue: number;
+  ordersThisMonth: number;
+  spentThisMonth: number;
 }
