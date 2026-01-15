@@ -353,6 +353,7 @@ export type Database = {
           sell_price: number | null
           sku: string | null
           supplier: string | null
+          supplier_id: string | null
           unit: string | null
           unit_cost: number | null
           updated_at: string | null
@@ -373,6 +374,7 @@ export type Database = {
           sell_price?: number | null
           sku?: string | null
           supplier?: string | null
+          supplier_id?: string | null
           unit?: string | null
           unit_cost?: number | null
           updated_at?: string | null
@@ -393,6 +395,7 @@ export type Database = {
           sell_price?: number | null
           sku?: string | null
           supplier?: string | null
+          supplier_id?: string | null
           unit?: string | null
           unit_cost?: number | null
           updated_at?: string | null
@@ -403,6 +406,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "inventory_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -912,9 +922,11 @@ export type Database = {
           created_at: string | null
           expected_delivery: string | null
           id: string
+          invoice_id: string | null
           is_template: boolean | null
           notes: string | null
           order_number: string
+          received_at: string | null
           status: string | null
           supplier_id: string | null
           supplier_name: string
@@ -926,9 +938,11 @@ export type Database = {
           created_at?: string | null
           expected_delivery?: string | null
           id?: string
+          invoice_id?: string | null
           is_template?: boolean | null
           notes?: string | null
           order_number: string
+          received_at?: string | null
           status?: string | null
           supplier_id?: string | null
           supplier_name: string
@@ -940,9 +954,11 @@ export type Database = {
           created_at?: string | null
           expected_delivery?: string | null
           id?: string
+          invoice_id?: string | null
           is_template?: boolean | null
           notes?: string | null
           order_number?: string
+          received_at?: string | null
           status?: string | null
           supplier_id?: string | null
           supplier_name?: string
@@ -951,6 +967,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "purchase_orders_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchase_orders_supplier_id_fkey"
             columns: ["supplier_id"]
