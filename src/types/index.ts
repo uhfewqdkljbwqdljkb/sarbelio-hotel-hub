@@ -32,6 +32,7 @@ export interface Room {
   price: number;
   weekdayPrice?: number;
   weekendPrice?: number;
+  dayStayPrice?: number;
   capacity: number;
   amenities: string[];
   imageUrl: string;
@@ -82,6 +83,7 @@ export interface Reservation {
   status: ReservationStatus;
   source: BookingSource;
   createdAt: string;
+  isDayStay?: boolean;
 }
 
 // Guest Types

@@ -15,7 +15,9 @@ import {
   X,
   Loader2,
   Ban,
-  AlertTriangle
+  AlertTriangle,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { ReservationStatus, BookingSource, Reservation, Guest } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -26,6 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { differenceInDays, format } from 'date-fns';
 
@@ -58,12 +61,14 @@ const ReservationsPage: React.FC = () => {
   const [numGuests, setNumGuests] = useState(1);
   const [source, setSource] = useState<BookingSource>('DIRECT');
   const [status, setStatus] = useState<ReservationStatus>('PENDING');
+  const [isDayStay, setIsDayStay] = useState(false);
 
   const availableRooms = rooms.filter(room => 
     room.status === 'AVAILABLE' || room.status === 'RESERVED'
   );
 
   const calculateNights = () => {
+    if (isDayStay) return 1; // Day stay counts as 1 unit
     if (!checkIn || !checkOut) return 0;
     const nights = differenceInDays(new Date(checkOut), new Date(checkIn));
     return nights > 0 ? nights : 0;
@@ -72,6 +77,12 @@ const ReservationsPage: React.FC = () => {
   const calculateTotal = () => {
     const room = rooms.find(r => r.id === selectedRoomId);
     if (!room) return 0;
+    
+    if (isDayStay) {
+      // Use day stay price if available, otherwise use base price
+      return room.dayStayPrice || room.price;
+    }
+    
     return room.price * calculateNights();
   };
 
@@ -85,6 +96,7 @@ const ReservationsPage: React.FC = () => {
     setSource('DIRECT');
     setStatus('PENDING');
     setGuestMode('existing');
+    setIsDayStay(false);
   };
 
   const handleCreateReservation = async () => {
@@ -101,11 +113,15 @@ const ReservationsPage: React.FC = () => {
       toast.error('Please select a room');
       return;
     }
-    if (!checkIn || !checkOut) {
-      toast.error('Please select check-in and check-out dates');
+    if (!checkIn) {
+      toast.error('Please select check-in date');
       return;
     }
-    if (calculateNights() <= 0) {
+    if (!isDayStay && !checkOut) {
+      toast.error('Please select check-out date');
+      return;
+    }
+    if (!isDayStay && calculateNights() <= 0) {
       toast.error('Check-out must be after check-in');
       return;
     }
@@ -135,6 +151,9 @@ const ReservationsPage: React.FC = () => {
 
       const room = rooms.find(r => r.id === selectedRoomId);
       
+      // For day stay, use same date for check-in and check-out
+      const effectiveCheckOut = isDayStay ? checkIn : checkOut;
+      
       await createReservation.mutateAsync({
         confirmationCode: `CNF-${Date.now().toString(36).toUpperCase()}`,
         guestName,
@@ -142,12 +161,13 @@ const ReservationsPage: React.FC = () => {
         roomId: selectedRoomId,
         roomName: room?.name,
         checkIn,
-        checkOut,
+        checkOut: effectiveCheckOut,
         nights: calculateNights(),
         guests: numGuests,
         totalAmount: calculateTotal(),
         status,
         source,
+        isDayStay,
       });
 
       toast.success('Reservation created successfully!');
@@ -319,7 +339,7 @@ const ReservationsPage: React.FC = () => {
                   <SelectContent>
                     {availableRooms.map(room => (
                       <SelectItem key={room.id} value={room.id}>
-                        {room.roomNumber} - {room.name} (${room.price}/night)
+                        {room.roomNumber} - {room.name} (${isDayStay ? (room.dayStayPrice || room.price) : room.price}/{isDayStay ? 'day' : 'night'})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -329,24 +349,51 @@ const ReservationsPage: React.FC = () => {
                 )}
               </div>
 
+              {/* Day Stay Toggle */}
+              <div className="flex items-center justify-between p-4 bg-secondary rounded-lg">
+                <div className="flex items-center gap-3">
+                  {isDayStay ? (
+                    <Sun className="w-5 h-5 text-amber-500" />
+                  ) : (
+                    <Moon className="w-5 h-5 text-blue-500" />
+                  )}
+                  <div>
+                    <Label className="text-base font-medium cursor-pointer">
+                      {isDayStay ? 'Day Stay' : 'Night Stay'}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {isDayStay 
+                        ? 'Daytime booking (no overnight)' 
+                        : 'Standard overnight reservation'}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={isDayStay}
+                  onCheckedChange={setIsDayStay}
+                />
+              </div>
+
               {/* Dates */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className={`grid gap-4 ${isDayStay ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 <div className="space-y-2">
-                  <Label>Check-in Date *</Label>
+                  <Label>{isDayStay ? 'Date *' : 'Check-in Date *'}</Label>
                   <Input
                     type="date"
                     value={checkIn}
                     onChange={(e) => setCheckIn(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Check-out Date *</Label>
-                  <Input
-                    type="date"
-                    value={checkOut}
-                    onChange={(e) => setCheckOut(e.target.value)}
-                  />
-                </div>
+                {!isDayStay && (
+                  <div className="space-y-2">
+                    <Label>Check-out Date *</Label>
+                    <Input
+                      type="date"
+                      value={checkOut}
+                      onChange={(e) => setCheckOut(e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Number of Guests */}
@@ -393,17 +440,31 @@ const ReservationsPage: React.FC = () => {
               </div>
 
               {/* Summary */}
-              {selectedRoomId && checkIn && checkOut && calculateNights() > 0 && (
+              {selectedRoomId && checkIn && (isDayStay || (checkOut && calculateNights() > 0)) && (
                 <div className="bg-secondary p-4 rounded-lg space-y-2">
-                  <h4 className="font-semibold">Reservation Summary</h4>
+                  <h4 className="font-semibold flex items-center gap-2">
+                    Reservation Summary
+                    {isDayStay && (
+                      <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                        Day Stay
+                      </span>
+                    )}
+                  </h4>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Room:</span>
                     <span>{rooms.find(r => r.id === selectedRoomId)?.name}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Nights:</span>
-                    <span>{calculateNights()}</span>
-                  </div>
+                  {isDayStay ? (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Date:</span>
+                      <span>{format(new Date(checkIn), 'MMM d, yyyy')}</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Nights:</span>
+                      <span>{calculateNights()}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm font-bold">
                     <span>Total:</span>
                     <span>${calculateTotal().toLocaleString()}</span>
