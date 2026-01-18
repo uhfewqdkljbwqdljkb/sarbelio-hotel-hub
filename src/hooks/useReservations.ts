@@ -21,6 +21,7 @@ interface DbReservation {
   source: string;
   notes: string | null;
   created_at: string;
+  is_day_stay: boolean | null;
 }
 
 const mapDbReservationToReservation = (dbRes: DbReservation): Reservation => ({
@@ -40,6 +41,7 @@ const mapDbReservationToReservation = (dbRes: DbReservation): Reservation => ({
   status: dbRes.status as ReservationStatus,
   source: dbRes.source as BookingSource,
   createdAt: dbRes.created_at,
+  isDayStay: dbRes.is_day_stay ?? false,
 });
 
 export function useReservations() {
@@ -75,6 +77,7 @@ export function useCreateReservation() {
       totalAmount: number;
       status?: string;
       source?: string;
+      isDayStay?: boolean;
     }) => {
       if (!reservation.guestName || !reservation.checkIn || !reservation.checkOut) {
         throw new Error('Guest name, check-in and check-out dates are required');
@@ -96,6 +99,7 @@ export function useCreateReservation() {
           total_amount: reservation.totalAmount || 0,
           status: reservation.status || 'PENDING',
           source: reservation.source || 'DIRECT',
+          is_day_stay: reservation.isDayStay || false,
         })
         .select()
         .single();

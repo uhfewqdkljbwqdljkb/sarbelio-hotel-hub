@@ -48,6 +48,7 @@ const roomSchema = z.object({
   price: z.coerce.number().min(0, 'Price must be positive'),
   weekdayPrice: z.coerce.number().min(0, 'Price must be positive').optional().or(z.literal('')),
   weekendPrice: z.coerce.number().min(0, 'Price must be positive').optional().or(z.literal('')),
+  dayStayPrice: z.coerce.number().min(0, 'Price must be positive').optional().or(z.literal('')),
   capacity: z.coerce.number().min(1, 'Capacity must be at least 1'),
   size: z.coerce.number().min(0, 'Size must be positive'),
   description: z.string().optional(),
@@ -85,6 +86,7 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
       price: 100,
       weekdayPrice: '',
       weekendPrice: '',
+      dayStayPrice: '',
       capacity: 2,
       size: 300,
       description: '',
@@ -139,6 +141,7 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
         price: data.price,
         weekdayPrice: data.weekdayPrice ? Number(data.weekdayPrice) : undefined,
         weekendPrice: data.weekendPrice ? Number(data.weekendPrice) : undefined,
+        dayStayPrice: data.dayStayPrice ? Number(data.dayStayPrice) : undefined,
         capacity: data.capacity,
         size: data.size,
         description: data.description || '',
@@ -233,7 +236,7 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
             {/* Pricing Section */}
             <div className="space-y-3">
               <label className="block text-sm font-medium">Pricing</label>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="price"
@@ -247,6 +250,26 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="dayStayPrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">Day Stay ($)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="Optional" 
+                          {...field}
+                          value={field.value || ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="weekdayPrice"
@@ -285,7 +308,7 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({ open, onOpenChange }) => 
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Leave weekday/weekend blank to use base price for all days.
+                Leave optional prices blank to use base price. Day stay is for daytime-only bookings.
               </p>
             </div>
 

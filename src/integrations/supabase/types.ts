@@ -994,6 +994,7 @@ export type Database = {
           guest_name: string
           guests_count: number
           id: string
+          is_day_stay: boolean | null
           nights: number
           notes: string | null
           phone: string | null
@@ -1015,6 +1016,7 @@ export type Database = {
           guest_name: string
           guests_count?: number
           id?: string
+          is_day_stay?: boolean | null
           nights?: number
           notes?: string | null
           phone?: string | null
@@ -1036,6 +1038,7 @@ export type Database = {
           guest_name?: string
           guests_count?: number
           id?: string
+          is_day_stay?: boolean | null
           nights?: number
           notes?: string | null
           phone?: string | null
@@ -1184,6 +1187,7 @@ export type Database = {
           capacity: number
           cleaning_status: Database["public"]["Enums"]["cleaning_status"] | null
           created_at: string | null
+          day_stay_price: number | null
           description: string | null
           floor: number
           id: string
@@ -1206,6 +1210,7 @@ export type Database = {
             | Database["public"]["Enums"]["cleaning_status"]
             | null
           created_at?: string | null
+          day_stay_price?: number | null
           description?: string | null
           floor?: number
           id?: string
@@ -1228,6 +1233,7 @@ export type Database = {
             | Database["public"]["Enums"]["cleaning_status"]
             | null
           created_at?: string | null
+          day_stay_price?: number | null
           description?: string | null
           floor?: number
           id?: string
