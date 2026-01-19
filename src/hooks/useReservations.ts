@@ -121,23 +121,26 @@ export function useUpdateReservation() {
   
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Reservation> & { id: string }) => {
+      // Build update object with only defined values
+      const updateData: Record<string, unknown> = {};
+      
+      if (updates.guestName !== undefined) updateData.guest_name = updates.guestName;
+      if (updates.guestEmail !== undefined) updateData.guest_email = updates.guestEmail;
+      if (updates.phone !== undefined) updateData.phone = updates.phone;
+      if (updates.roomId !== undefined) updateData.room_id = updates.roomId;
+      if (updates.roomName !== undefined) updateData.room_name = updates.roomName;
+      if (updates.roomTypeId !== undefined) updateData.room_type_id = updates.roomTypeId;
+      if (updates.checkIn !== undefined) updateData.check_in = updates.checkIn;
+      if (updates.checkOut !== undefined) updateData.check_out = updates.checkOut;
+      if (updates.nights !== undefined) updateData.nights = updates.nights;
+      if (updates.guests !== undefined) updateData.guests_count = updates.guests;
+      if (updates.totalAmount !== undefined) updateData.total_amount = updates.totalAmount;
+      if (updates.status !== undefined) updateData.status = updates.status;
+      if (updates.source !== undefined) updateData.source = updates.source;
+
       const { data, error } = await supabase
         .from('reservations')
-        .update({
-          guest_name: updates.guestName,
-          guest_email: updates.guestEmail,
-          phone: updates.phone,
-          room_id: updates.roomId,
-          room_name: updates.roomName,
-          room_type_id: updates.roomTypeId,
-          check_in: updates.checkIn,
-          check_out: updates.checkOut,
-          nights: updates.nights,
-          guests_count: updates.guests,
-          total_amount: updates.totalAmount,
-          status: updates.status,
-          source: updates.source,
-        })
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
@@ -147,6 +150,7 @@ export function useUpdateReservation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar_reservations'] });
     },
   });
 }

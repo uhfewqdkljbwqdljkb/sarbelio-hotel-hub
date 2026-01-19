@@ -1,18 +1,28 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, BedDouble, Loader2, CalendarDays, LogIn, LogOut, Users, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useCalendarRooms, useCalendarReservations, useTodaysSummary } from '@/hooks/useCalendar';
 import { cn } from '@/lib/utils';
 
-const statusConfig: Record<string, { bg: string; text: string; border: string; label: string }> = {
-  PENDING: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Pending' },
-  CONFIRMED: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', label: 'Confirmed' },
-  CHECKED_IN: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'In House' },
-  CHECKED_OUT: { bg: 'bg-slate-50', text: 'text-slate-500', border: 'border-slate-200', label: 'Checked Out' },
-  CANCELLED: { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200', label: 'Cancelled' },
-  NO_SHOW: { bg: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-200', label: 'No Show' },
+const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
+  PENDING: { bg: 'bg-amber-400', text: 'text-white', label: 'Pending' },
+  CONFIRMED: { bg: 'bg-sky-500', text: 'text-white', label: 'Confirmed' },
+  CHECKED_IN: { bg: 'bg-emerald-500', text: 'text-white', label: 'In House' },
+  CHECKED_OUT: { bg: 'bg-slate-400', text: 'text-white', label: 'Checked Out' },
+  CANCELLED: { bg: 'bg-red-400', text: 'text-white', label: 'Cancelled' },
+  NO_SHOW: { bg: 'bg-orange-400', text: 'text-white', label: 'No Show' },
 };
+
+interface ReservationBar {
+  id: string;
+  guestName: string;
+  status: string;
+  startDay: number;
+  endDay: number;
+  startsThisMonth: boolean;
+  endsThisMonth: boolean;
+}
 
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -23,42 +33,68 @@ export default function CalendarPage() {
 
   const isLoading = roomsLoading || reservationsLoading;
 
-  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
   const goToToday = () => setCurrentDate(new Date());
-
-  const getReservationsForRoom = (roomNumber: string) => {
-    return reservations.filter(r => r.roomNumber === roomNumber);
-  };
-
-  const isDateInRange = (day: number, checkIn: string, checkOut: string) => {
-    const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
-    return date >= start && date < end;
-  };
 
   const isToday = (day: number) => {
     const today = new Date();
-    return (
-      day === today.getDate() &&
-      currentDate.getMonth() === today.getMonth() &&
-      currentDate.getFullYear() === today.getFullYear()
-    );
+    return day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
   };
 
   const isWeekend = (day: number) => {
-    const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+    const date = new Date(year, month, day);
     return date.getDay() === 0 || date.getDay() === 6;
   };
 
+  // Calculate reservation bars for each room
+  const roomReservationBars = useMemo(() => {
+    const result: Record<string, ReservationBar[]> = {};
+
+    rooms.forEach(room => {
+      const roomRes = reservations.filter(r => r.roomNumber === room.roomNumber);
+      const bars: ReservationBar[] = [];
+
+      roomRes.forEach(res => {
+        const checkIn = new Date(res.checkIn);
+        const checkOut = new Date(res.checkOut);
+        
+        // Check if reservation overlaps with current month
+        const monthStart = new Date(year, month, 1);
+        const monthEnd = new Date(year, month + 1, 0);
+
+        if (checkOut < monthStart || checkIn > monthEnd) return;
+
+        const startsThisMonth = checkIn.getFullYear() === year && checkIn.getMonth() === month;
+        const endsThisMonth = checkOut.getFullYear() === year && checkOut.getMonth() === month;
+
+        const startDay = startsThisMonth ? checkIn.getDate() : 1;
+        const endDay = endsThisMonth ? checkOut.getDate() : daysInMonth;
+
+        bars.push({
+          id: res.id,
+          guestName: res.guestName,
+          status: res.status,
+          startDay,
+          endDay,
+          startsThisMonth,
+          endsThisMonth,
+        });
+      });
+
+      result[room.roomNumber] = bars;
+    });
+
+    return result;
+  }, [rooms, reservations, year, month, daysInMonth]);
+
   const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const isCurrentMonth = 
-    currentDate.getMonth() === new Date().getMonth() && 
-    currentDate.getFullYear() === new Date().getFullYear();
+  const isCurrentMonth = month === new Date().getMonth() && year === new Date().getFullYear();
 
   if (isLoading) {
     return (
@@ -87,7 +123,7 @@ export default function CalendarPage() {
           <div className="hidden lg:flex items-center gap-3">
             {Object.entries(statusConfig).slice(0, 4).map(([status, config]) => (
               <div key={status} className="flex items-center gap-1.5">
-                <div className={cn("w-2.5 h-2.5 rounded-full", config.bg, "border", config.border)} />
+                <div className={cn("w-3 h-3 rounded-sm", config.bg)} />
                 <span className="text-xs text-muted-foreground">{config.label}</span>
               </div>
             ))}
@@ -146,128 +182,115 @@ export default function CalendarPage() {
               <p className="text-sm mt-1">Add rooms in the Rooms page to see them here</p>
             </div>
           ) : (
-            <table className="w-full min-w-[1400px]">
-              <thead>
-                <tr className="border-b border-border/50">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider sticky left-0 bg-card z-10 w-[140px] border-r border-border/30">
-                    Room
-                  </th>
-                  {days.map(day => {
-                    const dayOfWeek = new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
-                      .toLocaleDateString('en-US', { weekday: 'short' });
-                    return (
-                      <th 
-                        key={day} 
-                        className={cn(
-                          "px-0.5 py-2 text-center min-w-[44px] transition-colors",
-                          isToday(day) && "bg-primary",
-                          isWeekend(day) && !isToday(day) && "bg-muted/30"
-                        )}
-                      >
-                        <div className={cn(
-                          "text-[10px] uppercase tracking-wide mb-0.5",
-                          isToday(day) ? "text-primary-foreground/70" : "text-muted-foreground"
-                        )}>
-                          {dayOfWeek.slice(0, 2)}
-                        </div>
-                        <div className={cn(
-                          "text-sm font-semibold",
-                          isToday(day) ? "text-primary-foreground" : "text-foreground"
-                        )}>
-                          {day}
-                        </div>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {rooms.map((room, roomIndex) => {
-                  const roomReservations = getReservationsForRoom(room.roomNumber);
-                  return (
-                    <tr 
-                      key={room.id} 
+            <div className="min-w-[1200px]">
+              {/* Header Row - Day Numbers */}
+              <div className="flex border-b border-border/50">
+                <div className="w-[120px] flex-shrink-0 px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-r border-border/30 bg-muted/30">
+                  Room
+                </div>
+                <div className="flex-1 flex">
+                  {days.map(day => (
+                    <div
+                      key={day}
                       className={cn(
-                        "group transition-colors",
-                        roomIndex % 2 === 0 ? "bg-card" : "bg-muted/20"
+                        "flex-1 min-w-[40px] py-2 text-center border-r border-border/20 last:border-r-0",
+                        isToday(day) && "bg-primary text-primary-foreground",
+                        isWeekend(day) && !isToday(day) && "bg-muted/40"
                       )}
                     >
-                      <td className={cn(
-                        "px-4 py-1.5 sticky left-0 z-10 border-r border-border/30",
-                        roomIndex % 2 === 0 ? "bg-card" : "bg-muted/20"
+                      <div className={cn(
+                        "text-[10px] uppercase tracking-wide",
+                        isToday(day) ? "text-primary-foreground/70" : "text-muted-foreground"
                       )}>
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <BedDouble className="h-4 w-4 text-primary" />
-                          </div>
-                          <div>
-                            <span className="font-semibold text-sm text-foreground">{room.roomNumber}</span>
-                            {room.name && (
-                              <p className="text-[10px] text-muted-foreground truncate max-w-[80px]">{room.name}</p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      {days.map(day => {
-                        const reservation = roomReservations.find(r => 
-                          isDateInRange(day, r.checkIn, r.checkOut)
-                        );
-                        const isCheckIn = reservation && 
-                          new Date(reservation.checkIn).getDate() === day && 
-                          new Date(reservation.checkIn).getMonth() === currentDate.getMonth();
-                        const isCheckOut = reservation && 
-                          new Date(reservation.checkOut).getDate() === day && 
-                          new Date(reservation.checkOut).getMonth() === currentDate.getMonth();
-                        
-                        const config = reservation ? statusConfig[reservation.status] || statusConfig.PENDING : null;
-                        
-                        return (
-                          <td 
-                            key={day} 
+                        {new Date(year, month, day).toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2)}
+                      </div>
+                      <div className={cn(
+                        "text-sm font-semibold",
+                        isToday(day) ? "text-primary-foreground" : "text-foreground"
+                      )}>
+                        {day}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Room Rows */}
+              {rooms.map((room, roomIndex) => {
+                const bars = roomReservationBars[room.roomNumber] || [];
+
+                return (
+                  <div
+                    key={room.id}
+                    className={cn(
+                      "flex border-b border-border/30 last:border-b-0",
+                      roomIndex % 2 === 0 ? "bg-card" : "bg-muted/10"
+                    )}
+                  >
+                    {/* Room Label */}
+                    <div className={cn(
+                      "w-[120px] flex-shrink-0 px-3 py-2 border-r border-border/30 flex items-center gap-2",
+                      roomIndex % 2 === 0 ? "bg-card" : "bg-muted/10"
+                    )}>
+                      <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center">
+                        <BedDouble className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                      <div>
+                        <span className="font-semibold text-sm text-foreground">{room.roomNumber}</span>
+                        {room.name && (
+                          <p className="text-[10px] text-muted-foreground truncate max-w-[60px]">{room.name}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Days Grid with Reservation Bars */}
+                    <div className="flex-1 relative h-[52px]">
+                      {/* Background day cells */}
+                      <div className="absolute inset-0 flex">
+                        {days.map(day => (
+                          <div
+                            key={day}
                             className={cn(
-                              "px-0 py-1 text-center relative",
+                              "flex-1 min-w-[40px] border-r border-border/10 last:border-r-0",
                               isWeekend(day) && "bg-muted/20"
                             )}
-                          >
-                            {reservation && config ? (
-                              <div 
-                                className={cn(
-                                  "h-9 flex items-center cursor-pointer transition-all hover:opacity-90",
-                                  config.bg,
-                                  "border-y",
-                                  config.border,
-                                  isCheckIn && "rounded-l-lg ml-0.5 border-l",
-                                  isCheckOut && "rounded-r-lg mr-0.5 border-r",
-                                  !isCheckIn && !isCheckOut && "border-transparent"
-                                )}
-                                title={`${reservation.guestName} - ${reservation.status}`}
-                              >
-                                {isCheckIn && (
-                                  <span className={cn(
-                                    "text-xs font-medium truncate px-2",
-                                    config.text
-                                  )}>
-                                    {reservation.guestName.split(' ')[0]}
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <div 
-                                className={cn(
-                                  "h-9 cursor-pointer transition-colors",
-                                  "hover:bg-primary/5",
-                                  isToday(day) && "bg-primary/5"
-                                )} 
-                              />
+                          />
+                        ))}
+                      </div>
+
+                      {/* Reservation Bars */}
+                      {bars.map(bar => {
+                        const config = statusConfig[bar.status] || statusConfig.PENDING;
+                        const startPercent = ((bar.startDay - 1) / daysInMonth) * 100;
+                        const widthPercent = ((bar.endDay - bar.startDay + 1) / daysInMonth) * 100;
+
+                        return (
+                          <div
+                            key={bar.id}
+                            className={cn(
+                              "absolute top-2 h-8 flex items-center px-2 cursor-pointer transition-opacity hover:opacity-90 shadow-sm",
+                              config.bg,
+                              config.text,
+                              bar.startsThisMonth ? "rounded-l-md" : "rounded-l-none -ml-1",
+                              bar.endsThisMonth ? "rounded-r-md" : "rounded-r-none"
                             )}
-                          </td>
+                            style={{
+                              left: `${startPercent}%`,
+                              width: `calc(${widthPercent}% ${!bar.startsThisMonth ? '+ 4px' : ''})`,
+                            }}
+                            title={`${bar.guestName} - ${bar.status}`}
+                          >
+                            <span className="text-xs font-medium truncate">
+                              {bar.guestName}
+                            </span>
+                          </div>
                         );
                       })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
