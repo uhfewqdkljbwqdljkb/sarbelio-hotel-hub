@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useReservations, useCreateReservation, useCancelReservation } from '@/hooks/useReservations';
+import { useReservations, useCreateReservation, useCancelReservation, useUpdateReservation } from '@/hooks/useReservations';
 import { useCancelledReservations } from '@/hooks/useFinancials';
 import { useRooms } from '@/hooks/useRooms';
 import { useGuests, useCreateGuest } from '@/hooks/useGuests';
@@ -17,12 +17,15 @@ import {
   Ban,
   AlertTriangle,
   Sun,
-  Moon
+  Moon,
+  CheckCircle,
+  LogIn,
+  LogOut
 } from 'lucide-react';
 import { ReservationStatus, BookingSource, Reservation, Guest } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -46,6 +49,7 @@ const ReservationsPage: React.FC = () => {
   const createReservation = useCreateReservation();
   const createGuest = useCreateGuest();
   const cancelReservation = useCancelReservation();
+  const updateReservation = useUpdateReservation();
   
   // Form state for new reservation
   const [selectedGuestId, setSelectedGuestId] = useState('');
@@ -227,6 +231,19 @@ const ReservationsPage: React.FC = () => {
       toast.success('Reservation cancelled successfully');
     } catch (error) {
       toast.error('Failed to cancel reservation');
+      console.error(error);
+    }
+  };
+
+  const handleStatusChange = async (reservation: Reservation, newStatus: ReservationStatus) => {
+    try {
+      await updateReservation.mutateAsync({
+        id: reservation.id,
+        status: newStatus,
+      });
+      toast.success(`Status updated to ${newStatus.replace(/_/g, ' ')}`);
+    } catch (error) {
+      toast.error('Failed to update status');
       console.error(error);
     }
   };
@@ -642,7 +659,45 @@ const ReservationsPage: React.FC = () => {
                                 <MoreVertical className="w-4 h-4 text-muted-foreground" />
                               </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                              {res.status === 'PENDING' && (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(res, 'CONFIRMED')}
+                                  className="cursor-pointer"
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                                  Confirm Reservation
+                                </DropdownMenuItem>
+                              )}
+                              {(res.status === 'PENDING' || res.status === 'CONFIRMED') && (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(res, 'CHECKED_IN')}
+                                  className="cursor-pointer"
+                                >
+                                  <LogIn className="w-4 h-4 mr-2 text-blue-600" />
+                                  Check In
+                                </DropdownMenuItem>
+                              )}
+                              {res.status === 'CHECKED_IN' && (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(res, 'CHECKED_OUT')}
+                                  className="cursor-pointer"
+                                >
+                                  <LogOut className="w-4 h-4 mr-2 text-slate-600" />
+                                  Check Out
+                                </DropdownMenuItem>
+                              )}
+                              {res.status === 'CONFIRMED' && (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(res, 'NO_SHOW')}
+                                  className="cursor-pointer"
+                                >
+                                  <AlertTriangle className="w-4 h-4 mr-2 text-orange-600" />
+                                  Mark No Show
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
                               <AlertDialogTrigger asChild>
                                 <DropdownMenuItem className="text-red-600 cursor-pointer">
                                   <Ban className="w-4 h-4 mr-2" />
