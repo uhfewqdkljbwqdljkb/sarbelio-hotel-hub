@@ -1,35 +1,61 @@
-import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, BedDouble, Loader2, CalendarDays, LogIn, LogOut, Users, Calendar } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, BedDouble, Loader2, CalendarDays, LogIn, LogOut, Users, Calendar, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useCalendarRooms, useCalendarReservations, useTodaysSummary } from '@/hooks/useCalendar';
+import { useUpdateReservation } from '@/hooks/useReservations';
+import { ReservationDetailsModal } from '@/components/calendar/ReservationDetailsModal';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
   PENDING: { bg: 'bg-amber-400', text: 'text-white', label: 'Pending' },
   CONFIRMED: { bg: 'bg-sky-500', text: 'text-white', label: 'Confirmed' },
   CHECKED_IN: { bg: 'bg-emerald-500', text: 'text-white', label: 'In House' },
   CHECKED_OUT: { bg: 'bg-slate-400', text: 'text-white', label: 'Checked Out' },
-  CANCELLED: { bg: 'bg-red-400', text: 'text-white', label: 'Cancelled' },
-  NO_SHOW: { bg: 'bg-orange-400', text: 'text-white', label: 'No Show' },
 };
 
 interface ReservationBar {
   id: string;
   guestName: string;
+  guestEmail?: string;
+  phone?: string;
+  roomNumber: string;
+  roomId: string | null;
   status: string;
   startDay: number;
   endDay: number;
   startsThisMonth: boolean;
   endsThisMonth: boolean;
+  checkIn: string;
+  checkOut: string;
+  totalAmount?: number;
+  nights?: number;
+  guests?: number;
+  isDayStay?: boolean;
+}
+
+interface DragState {
+  reservationId: string;
+  originalRoomNumber: string;
+  originalStartDay: number;
+  originalEndDay: number;
+  checkIn: string;
+  checkOut: string;
+  roomId: string | null;
 }
 
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedReservation, setSelectedReservation] = useState<ReservationBar | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ roomNumber: string; day: number } | null>(null);
 
   const { data: rooms = [], isLoading: roomsLoading } = useCalendarRooms();
   const { data: reservations = [], isLoading: reservationsLoading } = useCalendarReservations();
   const { data: summary, isLoading: summaryLoading } = useTodaysSummary();
+  const updateReservation = useUpdateReservation();
 
   const isLoading = roomsLoading || reservationsLoading;
 
@@ -52,12 +78,19 @@ export default function CalendarPage() {
     return date.getDay() === 0 || date.getDay() === 6;
   };
 
+  // Filter out CANCELLED and NO_SHOW reservations
+  const activeReservations = useMemo(() => {
+    return reservations.filter(r => 
+      r.status !== 'CANCELLED' && r.status !== 'NO_SHOW'
+    );
+  }, [reservations]);
+
   // Calculate reservation bars for each room
   const roomReservationBars = useMemo(() => {
     const result: Record<string, ReservationBar[]> = {};
 
     rooms.forEach(room => {
-      const roomRes = reservations.filter(r => r.roomNumber === room.roomNumber);
+      const roomRes = activeReservations.filter(r => r.roomNumber === room.roomNumber);
       const bars: ReservationBar[] = [];
 
       roomRes.forEach(res => {
@@ -73,17 +106,30 @@ export default function CalendarPage() {
         const startsThisMonth = checkIn.getFullYear() === year && checkIn.getMonth() === month;
         const endsThisMonth = checkOut.getFullYear() === year && checkOut.getMonth() === month;
 
+        // startDay is the check-in date (where bar starts)
         const startDay = startsThisMonth ? checkIn.getDate() : 1;
-        const endDay = endsThisMonth ? checkOut.getDate() : daysInMonth;
+        // endDay is check-out date - 1 (guest leaves on checkout, so bar ends day before)
+        // For proper display: if checkout is Jan 5, bar should cover through Jan 4
+        const endDay = endsThisMonth ? Math.max(checkOut.getDate() - 1, startDay) : daysInMonth;
 
         bars.push({
           id: res.id,
           guestName: res.guestName,
+          guestEmail: res.guestEmail,
+          phone: res.phone,
+          roomNumber: res.roomNumber,
+          roomId: res.roomId,
           status: res.status,
           startDay,
           endDay,
           startsThisMonth,
           endsThisMonth,
+          checkIn: res.checkIn,
+          checkOut: res.checkOut,
+          totalAmount: res.totalAmount,
+          nights: res.nights,
+          guests: res.guests,
+          isDayStay: res.isDayStay,
         });
       });
 
@@ -91,7 +137,100 @@ export default function CalendarPage() {
     });
 
     return result;
-  }, [rooms, reservations, year, month, daysInMonth]);
+  }, [rooms, activeReservations, year, month, daysInMonth]);
+
+  const handleReservationClick = (bar: ReservationBar) => {
+    setSelectedReservation(bar);
+    setModalOpen(true);
+  };
+
+  const handleStatusChange = async (id: string, status: string) => {
+    try {
+      await updateReservation.mutateAsync({ id, status: status as any });
+      toast.success(`Reservation ${status.toLowerCase().replace('_', ' ')}`);
+      setModalOpen(false);
+    } catch {
+      toast.error('Failed to update reservation');
+    }
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, bar: ReservationBar) => {
+    e.dataTransfer.effectAllowed = 'move';
+    setDragState({
+      reservationId: bar.id,
+      originalRoomNumber: bar.roomNumber,
+      originalStartDay: bar.startDay,
+      originalEndDay: bar.endDay,
+      checkIn: bar.checkIn,
+      checkOut: bar.checkOut,
+      roomId: bar.roomId,
+    });
+  };
+
+  const handleDragEnd = () => {
+    setDragState(null);
+    setDropTarget(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, roomNumber: string, day: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDropTarget({ roomNumber, day });
+  };
+
+  const handleDragLeave = () => {
+    setDropTarget(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetRoomNumber: string, targetDay: number) => {
+    e.preventDefault();
+    
+    if (!dragState) return;
+
+    const targetRoom = rooms.find(r => r.roomNumber === targetRoomNumber);
+    if (!targetRoom) return;
+
+    // Calculate date shift
+    const dayShift = targetDay - dragState.originalStartDay;
+    const roomChanged = targetRoomNumber !== dragState.originalRoomNumber;
+
+    if (dayShift === 0 && !roomChanged) {
+      setDragState(null);
+      setDropTarget(null);
+      return;
+    }
+
+    // Calculate new dates
+    const originalCheckIn = new Date(dragState.checkIn);
+    const originalCheckOut = new Date(dragState.checkOut);
+    
+    const newCheckIn = new Date(originalCheckIn);
+    newCheckIn.setDate(newCheckIn.getDate() + dayShift);
+    
+    const newCheckOut = new Date(originalCheckOut);
+    newCheckOut.setDate(newCheckOut.getDate() + dayShift);
+
+    try {
+      await updateReservation.mutateAsync({
+        id: dragState.reservationId,
+        checkIn: newCheckIn.toISOString().split('T')[0],
+        checkOut: newCheckOut.toISOString().split('T')[0],
+        roomId: roomChanged ? targetRoom.id : dragState.roomId || undefined,
+        roomName: roomChanged ? targetRoomNumber : undefined,
+      });
+      
+      const changes = [];
+      if (dayShift !== 0) changes.push('dates updated');
+      if (roomChanged) changes.push(`moved to room ${targetRoomNumber}`);
+      toast.success(`Reservation ${changes.join(' and ')}`);
+    } catch {
+      toast.error('Failed to update reservation');
+    }
+
+    setDragState(null);
+    setDropTarget(null);
+  };
 
   const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const isCurrentMonth = month === new Date().getMonth() && year === new Date().getFullYear();
@@ -115,13 +254,13 @@ export default function CalendarPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-foreground">Room Calendar</h1>
-              <p className="text-sm text-muted-foreground">Manage reservations and availability</p>
+              <p className="text-sm text-muted-foreground">Drag reservations to change dates or rooms</p>
             </div>
           </div>
           
           {/* Status Legend */}
           <div className="hidden lg:flex items-center gap-3">
-            {Object.entries(statusConfig).slice(0, 4).map(([status, config]) => (
+            {Object.entries(statusConfig).map(([status, config]) => (
               <div key={status} className="flex items-center gap-1.5">
                 <div className={cn("w-3 h-3 rounded-sm", config.bg)} />
                 <span className="text-xs text-muted-foreground">{config.label}</span>
@@ -245,15 +384,19 @@ export default function CalendarPage() {
 
                     {/* Days Grid with Reservation Bars */}
                     <div className="flex-1 relative h-[52px]">
-                      {/* Background day cells */}
+                      {/* Background day cells (drop targets) */}
                       <div className="absolute inset-0 flex">
                         {days.map(day => (
                           <div
                             key={day}
                             className={cn(
-                              "flex-1 min-w-[40px] border-r border-border/10 last:border-r-0",
-                              isWeekend(day) && "bg-muted/20"
+                              "flex-1 min-w-[40px] border-r border-border/10 last:border-r-0 transition-colors",
+                              isWeekend(day) && "bg-muted/20",
+                              dropTarget?.roomNumber === room.roomNumber && dropTarget?.day === day && "bg-primary/20"
                             )}
+                            onDragOver={(e) => handleDragOver(e, room.roomNumber, day)}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, room.roomNumber, day)}
                           />
                         ))}
                       </div>
@@ -261,25 +404,35 @@ export default function CalendarPage() {
                       {/* Reservation Bars */}
                       {bars.map(bar => {
                         const config = statusConfig[bar.status] || statusConfig.PENDING;
+                        // Position bar correctly: startDay-1 because array is 0-indexed for percentage
                         const startPercent = ((bar.startDay - 1) / daysInMonth) * 100;
-                        const widthPercent = ((bar.endDay - bar.startDay + 1) / daysInMonth) * 100;
+                        // Width: number of days the bar spans
+                        const spanDays = bar.endDay - bar.startDay + 1;
+                        const widthPercent = (spanDays / daysInMonth) * 100;
 
                         return (
                           <div
                             key={bar.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, bar)}
+                            onDragEnd={handleDragEnd}
+                            onClick={() => handleReservationClick(bar)}
                             className={cn(
-                              "absolute top-2 h-8 flex items-center px-2 cursor-pointer transition-opacity hover:opacity-90 shadow-sm",
+                              "absolute top-2 h-8 flex items-center px-2 cursor-grab active:cursor-grabbing transition-all hover:opacity-90 hover:scale-[1.02] shadow-sm group",
                               config.bg,
                               config.text,
-                              bar.startsThisMonth ? "rounded-l-md" : "rounded-l-none -ml-1",
-                              bar.endsThisMonth ? "rounded-r-md" : "rounded-r-none"
+                              bar.startsThisMonth ? "rounded-l-md" : "rounded-l-none",
+                              bar.endsThisMonth ? "rounded-r-md" : "rounded-r-none",
+                              dragState?.reservationId === bar.id && "opacity-50"
                             )}
                             style={{
                               left: `${startPercent}%`,
-                              width: `calc(${widthPercent}% ${!bar.startsThisMonth ? '+ 4px' : ''})`,
+                              width: `${widthPercent}%`,
+                              minWidth: '40px',
                             }}
-                            title={`${bar.guestName} - ${bar.status}`}
+                            title={`${bar.guestName} - ${config.label} - Click to view details, drag to move`}
                           >
+                            <GripVertical className="w-3 h-3 opacity-0 group-hover:opacity-60 flex-shrink-0 mr-1" />
                             <span className="text-xs font-medium truncate">
                               {bar.guestName}
                             </span>
@@ -382,6 +535,15 @@ export default function CalendarPage() {
           </div>
         </div>
       </div>
+
+      {/* Reservation Details Modal */}
+      <ReservationDetailsModal
+        reservation={selectedReservation}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onStatusChange={handleStatusChange}
+        isUpdating={updateReservation.isPending}
+      />
     </div>
   );
 }

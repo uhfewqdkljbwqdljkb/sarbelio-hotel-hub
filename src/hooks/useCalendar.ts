@@ -4,11 +4,17 @@ import { supabase } from '@/integrations/supabase/client';
 interface CalendarReservation {
   id: string;
   guestName: string;
+  guestEmail?: string;
+  phone?: string;
   roomNumber: string;
   roomId: string | null;
   checkIn: string;
   checkOut: string;
   status: string;
+  totalAmount?: number;
+  nights?: number;
+  guests?: number;
+  isDayStay?: boolean;
 }
 
 interface Room {
@@ -50,11 +56,17 @@ export function useCalendarReservations() {
         .select(`
           id,
           guest_name,
+          guest_email,
+          phone,
           room_id,
           room_name,
           check_in,
           check_out,
           status,
+          total_amount,
+          nights,
+          guests_count,
+          is_day_stay,
           rooms (
             room_number
           )
@@ -76,11 +88,17 @@ export function useCalendarReservations() {
         return {
           id: r.id,
           guestName: r.guest_name,
+          guestEmail: r.guest_email || undefined,
+          phone: r.phone || undefined,
           roomId: r.room_id,
           roomNumber,
           checkIn: r.check_in,
           checkOut: r.check_out,
           status: r.status || 'PENDING',
+          totalAmount: r.total_amount || undefined,
+          nights: r.nights || undefined,
+          guests: r.guests_count || undefined,
+          isDayStay: r.is_day_stay || false,
         };
       });
     },
