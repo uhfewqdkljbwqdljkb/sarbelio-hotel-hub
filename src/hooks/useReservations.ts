@@ -14,6 +14,8 @@ interface DbReservation {
   room_type_id: string | null;
   check_in: string;
   check_out: string;
+  check_in_time: string | null;
+  check_out_time: string | null;
   nights: number;
   guests_count: number;
   total_amount: number;
@@ -35,6 +37,8 @@ const mapDbReservationToReservation = (dbRes: DbReservation): Reservation => ({
   roomTypeId: dbRes.room_type_id || undefined,
   checkIn: dbRes.check_in,
   checkOut: dbRes.check_out,
+  checkInTime: dbRes.check_in_time || undefined,
+  checkOutTime: dbRes.check_out_time || undefined,
   nights: dbRes.nights,
   guests: dbRes.guests_count,
   totalAmount: dbRes.total_amount,
@@ -72,6 +76,8 @@ export function useCreateReservation() {
       roomName?: string;
       checkIn: string;
       checkOut: string;
+      checkInTime?: string;
+      checkOutTime?: string;
       nights: number;
       guests: number;
       totalAmount: number;
@@ -94,6 +100,8 @@ export function useCreateReservation() {
           room_name: reservation.roomName || null,
           check_in: reservation.checkIn,
           check_out: reservation.checkOut,
+          check_in_time: reservation.checkInTime || '15:00',
+          check_out_time: reservation.checkOutTime || '11:00',
           nights: reservation.nights || 1,
           guests_count: reservation.guests || 1,
           total_amount: reservation.totalAmount || 0,
@@ -132,6 +140,8 @@ export function useUpdateReservation() {
       if (updates.roomTypeId !== undefined) updateData.room_type_id = updates.roomTypeId;
       if (updates.checkIn !== undefined) updateData.check_in = updates.checkIn;
       if (updates.checkOut !== undefined) updateData.check_out = updates.checkOut;
+      if (updates.checkInTime !== undefined) updateData.check_in_time = updates.checkInTime;
+      if (updates.checkOutTime !== undefined) updateData.check_out_time = updates.checkOutTime;
       if (updates.nights !== undefined) updateData.nights = updates.nights;
       if (updates.guests !== undefined) updateData.guests_count = updates.guests;
       if (updates.totalAmount !== undefined) updateData.total_amount = updates.totalAmount;

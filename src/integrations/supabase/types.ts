@@ -986,7 +986,9 @@ export type Database = {
       reservations: {
         Row: {
           check_in: string
+          check_in_time: string | null
           check_out: string
+          check_out_time: string | null
           confirmation_code: string
           created_at: string | null
           guest_email: string | null
@@ -1008,7 +1010,9 @@ export type Database = {
         }
         Insert: {
           check_in: string
+          check_in_time?: string | null
           check_out: string
+          check_out_time?: string | null
           confirmation_code: string
           created_at?: string | null
           guest_email?: string | null
@@ -1030,7 +1034,9 @@ export type Database = {
         }
         Update: {
           check_in?: string
+          check_in_time?: string | null
           check_out?: string
+          check_out_time?: string | null
           confirmation_code?: string
           created_at?: string | null
           guest_email?: string | null

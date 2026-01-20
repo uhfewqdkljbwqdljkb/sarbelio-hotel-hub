@@ -77,6 +77,8 @@ export interface Reservation {
   roomTypeId?: string;
   checkIn: string;
   checkOut: string;
+  checkInTime?: string;
+  checkOutTime?: string;
   nights: number;
   guests: number;
   totalAmount: number;

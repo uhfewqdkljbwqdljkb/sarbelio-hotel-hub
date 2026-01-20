@@ -70,6 +70,8 @@ const ReservationsPage: React.FC = () => {
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
+  const [checkInTime, setCheckInTime] = useState('15:00');
+  const [checkOutTime, setCheckOutTime] = useState('11:00');
   const [numGuests, setNumGuests] = useState(1);
   const [source, setSource] = useState<BookingSource>('DIRECT');
   const [status, setStatus] = useState<ReservationStatus>('PENDING');
@@ -104,6 +106,8 @@ const ReservationsPage: React.FC = () => {
     setSelectedRoomId('');
     setCheckIn('');
     setCheckOut('');
+    setCheckInTime('15:00');
+    setCheckOutTime('11:00');
     setNumGuests(1);
     setSource('DIRECT');
     setStatus('PENDING');
@@ -174,6 +178,8 @@ const ReservationsPage: React.FC = () => {
         roomName: room?.name,
         checkIn,
         checkOut: effectiveCheckOut,
+        checkInTime,
+        checkOutTime,
         nights: calculateNights(),
         guests: numGuests,
         totalAmount: calculateTotal(),
@@ -491,26 +497,48 @@ const ReservationsPage: React.FC = () => {
                 />
               </div>
 
-              {/* Dates */}
-              <div className={`grid gap-4 ${isDayStay ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                <div className="space-y-2">
-                  <Label>{isDayStay ? 'Date *' : 'Check-in Date *'}</Label>
-                  <Input
-                    type="date"
-                    value={checkIn}
-                    onChange={(e) => setCheckIn(e.target.value)}
-                  />
-                </div>
-                {!isDayStay && (
+              {/* Dates and Times */}
+              <div className="space-y-4">
+                <div className={`grid gap-4 ${isDayStay ? 'grid-cols-1' : 'grid-cols-2'}`}>
                   <div className="space-y-2">
-                    <Label>Check-out Date *</Label>
+                    <Label>{isDayStay ? 'Date *' : 'Check-in Date *'}</Label>
                     <Input
                       type="date"
-                      value={checkOut}
-                      onChange={(e) => setCheckOut(e.target.value)}
+                      value={checkIn}
+                      onChange={(e) => setCheckIn(e.target.value)}
                     />
                   </div>
-                )}
+                  {!isDayStay && (
+                    <div className="space-y-2">
+                      <Label>Check-out Date *</Label>
+                      <Input
+                        type="date"
+                        value={checkOut}
+                        onChange={(e) => setCheckOut(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Time inputs */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>{isDayStay ? 'Arrival Time' : 'Check-in Time'}</Label>
+                    <Input
+                      type="time"
+                      value={checkInTime}
+                      onChange={(e) => setCheckInTime(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{isDayStay ? 'Departure Time' : 'Check-out Time'}</Label>
+                    <Input
+                      type="time"
+                      value={checkOutTime}
+                      onChange={(e) => setCheckOutTime(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Number of Guests */}
@@ -582,6 +610,14 @@ const ReservationsPage: React.FC = () => {
                       <span>{calculateNights()}</span>
                     </div>
                   )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{isDayStay ? 'Arrival:' : 'Check-in:'}</span>
+                    <span>{checkInTime}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{isDayStay ? 'Departure:' : 'Check-out:'}</span>
+                    <span>{checkOutTime}</span>
+                  </div>
                   <div className="flex justify-between text-sm font-bold">
                     <span>Total:</span>
                     <span>${calculateTotal().toLocaleString()}</span>
