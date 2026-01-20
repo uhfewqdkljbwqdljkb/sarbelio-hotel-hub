@@ -21,7 +21,9 @@ import {
   CheckCircle,
   LogIn,
   LogOut,
-  History
+  History,
+  Download,
+  Filter
 } from 'lucide-react';
 import { ReservationStatus, BookingSource, Reservation, Guest } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -42,6 +44,11 @@ const ReservationsPage: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [guestMode, setGuestMode] = useState<'existing' | 'new'>('existing');
   const [activeTab, setActiveTab] = useState<'reservations' | 'past' | 'cancellations'>('reservations');
+  
+  // Date range filters for past reservations
+  const [pastDateFrom, setPastDateFrom] = useState('');
+  const [pastDateTo, setPastDateTo] = useState('');
+  const [pastDateType, setPastDateType] = useState<'check_in' | 'check_out'>('check_in');
   
   const { data: reservations = [], isLoading: reservationsLoading } = useReservations();
   const { data: rooms = [], isLoading: roomsLoading } = useRooms();
@@ -216,8 +223,72 @@ const ReservationsPage: React.FC = () => {
     const matchesSearch = 
       res.guestName.toLowerCase().includes(searchTerm.toLowerCase()) || 
       res.confirmationCode.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
+    
+    // Date range filter
+    let matchesDateRange = true;
+    if (pastDateFrom || pastDateTo) {
+      const dateToCheck = pastDateType === 'check_in' 
+        ? new Date(res.checkIn) 
+        : new Date(res.checkOut);
+      dateToCheck.setHours(0, 0, 0, 0);
+      
+      if (pastDateFrom) {
+        const fromDate = new Date(pastDateFrom);
+        fromDate.setHours(0, 0, 0, 0);
+        if (dateToCheck < fromDate) matchesDateRange = false;
+      }
+      if (pastDateTo) {
+        const toDate = new Date(pastDateTo);
+        toDate.setHours(0, 0, 0, 0);
+        if (dateToCheck > toDate) matchesDateRange = false;
+      }
+    }
+    
+    return matchesSearch && matchesDateRange;
   });
+
+  // CSV Export function
+  const exportToCsv = () => {
+    const headers = [
+      'Confirmation Code',
+      'Guest Name',
+      'Room',
+      'Check In',
+      'Check Out',
+      'Nights',
+      'Status',
+      'Source',
+      'Revenue'
+    ];
+    
+    const rows = filteredPastReservations.map(res => [
+      res.confirmationCode,
+      res.guestName,
+      res.roomName || 'Unassigned',
+      format(new Date(res.checkIn), 'yyyy-MM-dd'),
+      format(new Date(res.checkOut), 'yyyy-MM-dd'),
+      res.nights.toString(),
+      res.status.replace(/_/g, ' '),
+      res.source.replace(/_/g, ' '),
+      res.totalAmount.toString()
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `past-reservations-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${filteredPastReservations.length} reservations to CSV`);
+  };
 
   const getStatusColor = (status: ReservationStatus) => {
     switch (status) {
@@ -776,17 +847,92 @@ const ReservationsPage: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="past" className="mt-4">
-          {/* Search for past reservations */}
-          <div className="bg-card p-4 rounded-xl shadow-sm border border-border mb-4">
-            <div className="relative flex-1 max-w-md">
-              <input 
-                type="text" 
-                placeholder="Search past reservations..." 
-                className="w-full pl-10 pr-4 py-2 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+          {/* Search and filters for past reservations */}
+          <div className="bg-card p-4 rounded-xl shadow-sm border border-border mb-4 space-y-4">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
+              {/* Search */}
+              <div className="relative flex-1 max-w-md">
+                <input 
+                  type="text" 
+                  placeholder="Search past reservations..." 
+                  className="w-full pl-10 pr-4 py-2 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+              </div>
+              
+              {/* Export Button */}
+              <Button 
+                onClick={exportToCsv}
+                variant="outline"
+                className="flex items-center gap-2"
+                disabled={filteredPastReservations.length === 0}
+              >
+                <Download className="w-4 h-4" />
+                Export CSV
+              </Button>
+            </div>
+            
+            {/* Date Range Filters */}
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Filter by:</span>
+              </div>
+              
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Date Type</Label>
+                <Select value={pastDateType} onValueChange={(v) => setPastDateType(v as 'check_in' | 'check_out')}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="check_in">Check-in</SelectItem>
+                    <SelectItem value="check_out">Check-out</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">From</Label>
+                <Input
+                  type="date"
+                  value={pastDateFrom}
+                  onChange={(e) => setPastDateFrom(e.target.value)}
+                  className="w-[160px]"
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">To</Label>
+                <Input
+                  type="date"
+                  value={pastDateTo}
+                  onChange={(e) => setPastDateTo(e.target.value)}
+                  className="w-[160px]"
+                />
+              </div>
+              
+              {(pastDateFrom || pastDateTo) && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setPastDateFrom('');
+                    setPastDateTo('');
+                  }}
+                  className="text-muted-foreground"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Clear
+                </Button>
+              )}
+            </div>
+            
+            {/* Results count */}
+            <div className="text-sm text-muted-foreground">
+              Showing {filteredPastReservations.length} of {pastReservations.length} past reservations
             </div>
           </div>
 
