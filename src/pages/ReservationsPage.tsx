@@ -4,6 +4,7 @@ import { useCancelledReservations } from '@/hooks/useFinancials';
 import { useRooms } from '@/hooks/useRooms';
 import { useGuests, useCreateGuest } from '@/hooks/useGuests';
 import DashboardCard from '@/components/dashboard/DashboardCard';
+import { EditAddonsDialog } from '@/components/reservations/EditAddonsDialog';
 import { 
   Search, 
   Plus, 
@@ -23,7 +24,8 @@ import {
   LogOut,
   History,
   Download,
-  Filter
+  Filter,
+  Package
 } from 'lucide-react';
 import { ReservationStatus, BookingSource, Reservation, Guest } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -79,6 +81,10 @@ const ReservationsPage: React.FC = () => {
   const [extraBedCount, setExtraBedCount] = useState(0);
   const [extraWoodCount, setExtraWoodCount] = useState(0);
   const [discountAmount, setDiscountAmount] = useState(0);
+  
+  // Edit add-ons dialog state
+  const [editAddonsReservation, setEditAddonsReservation] = useState<Reservation | null>(null);
+  const [isEditAddonsOpen, setIsEditAddonsOpen] = useState(false);
 
   const availableRooms = rooms.filter(room => 
     room.status === 'AVAILABLE' || room.status === 'RESERVED'
@@ -368,6 +374,28 @@ const ReservationsPage: React.FC = () => {
       toast.success(`Status updated to ${newStatus.replace(/_/g, ' ')}`);
     } catch (error) {
       toast.error('Failed to update status');
+      console.error(error);
+    }
+  };
+
+  const handleSaveAddons = async (data: {
+    id: string;
+    extraBedCount: number;
+    extraWoodCount: number;
+    discountAmount: number;
+    totalAmount: number;
+  }) => {
+    try {
+      await updateReservation.mutateAsync({
+        id: data.id,
+        extraBedCount: data.extraBedCount,
+        extraWoodCount: data.extraWoodCount,
+        discountAmount: data.discountAmount,
+        totalAmount: data.totalAmount,
+      });
+      toast.success('Add-ons updated successfully');
+    } catch (error) {
+      toast.error('Failed to update add-ons');
       console.error(error);
     }
   };
@@ -937,6 +965,17 @@ const ReservationsPage: React.FC = () => {
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditAddonsReservation(res);
+                                  setIsEditAddonsOpen(true);
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <Package className="w-4 h-4 mr-2 text-purple-600" />
+                                Edit Add-ons
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <AlertDialogTrigger asChild>
                                 <DropdownMenuItem className="text-red-600 cursor-pointer">
                                   <Ban className="w-4 h-4 mr-2" />
@@ -1189,6 +1228,16 @@ const ReservationsPage: React.FC = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Edit Add-ons Dialog */}
+      <EditAddonsDialog
+        reservation={editAddonsReservation}
+        open={isEditAddonsOpen}
+        onOpenChange={setIsEditAddonsOpen}
+        onSave={handleSaveAddons}
+        isUpdating={updateReservation.isPending}
+        rooms={rooms}
+      />
     </div>
   );
 };
