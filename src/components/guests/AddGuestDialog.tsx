@@ -32,7 +32,7 @@ import { Loader2 } from 'lucide-react';
 const guestSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
-  email: z.string().email('Invalid email address'),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
   phone: z.string().optional(),
   nationality: z.string().optional(),
   loyaltyTier: z.enum(['STANDARD', 'SILVER', 'GOLD', 'PLATINUM']).optional(),
@@ -119,7 +119,7 @@ const AddGuestDialog: React.FC<AddGuestDialogProps> = ({ open, onOpenChange }) =
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>Email (Optional)</FormLabel>
                   <FormControl>
                     <Input type="email" placeholder="john@example.com" {...field} />
                   </FormControl>
