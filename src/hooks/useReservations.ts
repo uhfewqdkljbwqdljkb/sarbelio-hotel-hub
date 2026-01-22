@@ -24,6 +24,9 @@ interface DbReservation {
   notes: string | null;
   created_at: string;
   is_day_stay: boolean | null;
+  extra_bed_count: number;
+  extra_wood_count: number;
+  discount_amount: number;
 }
 
 const mapDbReservationToReservation = (dbRes: DbReservation): Reservation => ({
@@ -46,6 +49,9 @@ const mapDbReservationToReservation = (dbRes: DbReservation): Reservation => ({
   source: dbRes.source as BookingSource,
   createdAt: dbRes.created_at,
   isDayStay: dbRes.is_day_stay ?? false,
+  extraBedCount: dbRes.extra_bed_count ?? 0,
+  extraWoodCount: dbRes.extra_wood_count ?? 0,
+  discountAmount: dbRes.discount_amount ?? 0,
 });
 
 export function useReservations() {
@@ -84,6 +90,9 @@ export function useCreateReservation() {
       status?: string;
       source?: string;
       isDayStay?: boolean;
+      extraBedCount?: number;
+      extraWoodCount?: number;
+      discountAmount?: number;
     }) => {
       if (!reservation.guestName || !reservation.checkIn || !reservation.checkOut) {
         throw new Error('Guest name, check-in and check-out dates are required');
@@ -108,6 +117,9 @@ export function useCreateReservation() {
           status: reservation.status || 'PENDING',
           source: reservation.source || 'DIRECT',
           is_day_stay: reservation.isDayStay || false,
+          extra_bed_count: reservation.extraBedCount || 0,
+          extra_wood_count: reservation.extraWoodCount || 0,
+          discount_amount: reservation.discountAmount || 0,
         })
         .select()
         .single();
@@ -147,6 +159,9 @@ export function useUpdateReservation() {
       if (updates.totalAmount !== undefined) updateData.total_amount = updates.totalAmount;
       if (updates.status !== undefined) updateData.status = updates.status;
       if (updates.source !== undefined) updateData.source = updates.source;
+      if (updates.extraBedCount !== undefined) updateData.extra_bed_count = updates.extraBedCount;
+      if (updates.extraWoodCount !== undefined) updateData.extra_wood_count = updates.extraWoodCount;
+      if (updates.discountAmount !== undefined) updateData.discount_amount = updates.discountAmount;
 
       const { data, error } = await supabase
         .from('reservations')
