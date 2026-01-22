@@ -67,7 +67,7 @@ export function useCalendarReservations() {
           nights,
           guests_count,
           is_day_stay,
-          rooms (
+          rooms!left (
             room_number
           )
         `)
@@ -76,15 +76,9 @@ export function useCalendarReservations() {
       if (error) throw error;
       
       return (data || []).map((r): CalendarReservation => {
-        // Handle the rooms relation - can be object, array, or null
-        let roomNumber = r.room_name || 'N/A';
-        if (r.rooms) {
-          if (Array.isArray(r.rooms) && r.rooms.length > 0) {
-            roomNumber = r.rooms[0].room_number || roomNumber;
-          } else if (typeof r.rooms === 'object' && 'room_number' in r.rooms) {
-            roomNumber = (r.rooms as { room_number: string }).room_number || roomNumber;
-          }
-        }
+        // Handle the rooms relation - use helper function
+        const roomNumber = extractRoomNumber(r.rooms, r.room_name || 'N/A');
+        
         return {
           id: r.id,
           guestName: r.guest_name,
@@ -129,7 +123,7 @@ export function useTodaysSummary() {
           id,
           guest_name,
           room_name,
-          rooms (room_number)
+          rooms!left (room_number)
         `)
         .eq('check_in', today)
         .limit(5);
@@ -141,7 +135,7 @@ export function useTodaysSummary() {
           id,
           guest_name,
           room_name,
-          rooms (room_number)
+          rooms!left (room_number)
         `)
         .eq('check_out', today)
         .limit(5);
