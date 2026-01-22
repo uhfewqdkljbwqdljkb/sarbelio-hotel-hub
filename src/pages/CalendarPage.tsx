@@ -7,6 +7,7 @@ import { useUpdateReservation } from '@/hooks/useReservations';
 import { ReservationDetailsModal } from '@/components/calendar/ReservationDetailsModal';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { parseLocalDate, formatLocalDate, addDays, isInMonth } from '@/lib/dateUtils';
 
 const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
   PENDING: { bg: 'bg-amber-400', text: 'text-white', label: 'Pending' },
@@ -85,7 +86,7 @@ export default function CalendarPage() {
     );
   }, [reservations]);
 
-  // Calculate reservation bars for each room
+  // Calculate reservation bars for each room using local date parsing
   const roomReservationBars = useMemo(() => {
     const result: Record<string, ReservationBar[]> = {};
 
@@ -94,22 +95,24 @@ export default function CalendarPage() {
       const bars: ReservationBar[] = [];
 
       roomRes.forEach(res => {
-        const checkIn = new Date(res.checkIn);
-        const checkOut = new Date(res.checkOut);
+        // Use local date parsing to avoid timezone shifts
+        const checkIn = parseLocalDate(res.checkIn);
+        const checkOut = parseLocalDate(res.checkOut);
         
         // Check if reservation overlaps with current month
-        const monthStart = new Date(year, month, 1);
-        const monthEnd = new Date(year, month + 1, 0);
+        const monthStart = new Date(year, month, 1, 12, 0, 0);
+        const monthEnd = new Date(year, month, daysInMonth, 12, 0, 0);
 
+        // Skip if reservation doesn't overlap with this month
         if (checkOut < monthStart || checkIn > monthEnd) return;
 
-        const startsThisMonth = checkIn.getFullYear() === year && checkIn.getMonth() === month;
-        const endsThisMonth = checkOut.getFullYear() === year && checkOut.getMonth() === month;
+        const startsThisMonth = isInMonth(checkIn, year, month);
+        const endsThisMonth = isInMonth(checkOut, year, month);
 
         // startDay is the check-in date (where bar starts)
         const startDay = startsThisMonth ? checkIn.getDate() : 1;
         // endDay is check-out date - 1 (guest leaves on checkout, so bar ends day before)
-        // For proper display: if checkout is Jan 5, bar should cover through Jan 4
+        // For proper display: if checkout is Jan 23, bar should cover through Jan 22
         const endDay = endsThisMonth ? Math.max(checkOut.getDate() - 1, startDay) : daysInMonth;
 
         bars.push({
@@ -201,21 +204,19 @@ export default function CalendarPage() {
       return;
     }
 
-    // Calculate new dates
-    const originalCheckIn = new Date(dragState.checkIn);
-    const originalCheckOut = new Date(dragState.checkOut);
+    // Use local date parsing to avoid timezone issues
+    const originalCheckIn = parseLocalDate(dragState.checkIn);
+    const originalCheckOut = parseLocalDate(dragState.checkOut);
     
-    const newCheckIn = new Date(originalCheckIn);
-    newCheckIn.setDate(newCheckIn.getDate() + dayShift);
-    
-    const newCheckOut = new Date(originalCheckOut);
-    newCheckOut.setDate(newCheckOut.getDate() + dayShift);
+    // Add days to get new dates
+    const newCheckIn = addDays(originalCheckIn, dayShift);
+    const newCheckOut = addDays(originalCheckOut, dayShift);
 
     try {
       await updateReservation.mutateAsync({
         id: dragState.reservationId,
-        checkIn: newCheckIn.toISOString().split('T')[0],
-        checkOut: newCheckOut.toISOString().split('T')[0],
+        checkIn: formatLocalDate(newCheckIn),
+        checkOut: formatLocalDate(newCheckOut),
         roomId: roomChanged ? targetRoom.id : dragState.roomId || undefined,
         roomName: roomChanged ? targetRoomNumber : undefined,
       });
@@ -322,17 +323,23 @@ export default function CalendarPage() {
             </div>
           ) : (
             <div className="min-w-[1200px]">
-              {/* Header Row - Day Numbers */}
+              {/* Header Row - Day Numbers using CSS Grid */}
               <div className="flex border-b border-border/50">
                 <div className="w-[120px] flex-shrink-0 px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-r border-border/30 bg-muted/30">
                   Room
                 </div>
-                <div className="flex-1 flex">
+                <div 
+                  className="flex-1"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${daysInMonth}, minmax(40px, 1fr))`,
+                  }}
+                >
                   {days.map(day => (
                     <div
                       key={day}
                       className={cn(
-                        "flex-1 min-w-[40px] py-2 text-center border-r border-border/20 last:border-r-0",
+                        "py-2 text-center border-r border-border/20 last:border-r-0",
                         isToday(day) && "bg-primary text-primary-foreground",
                         isWeekend(day) && !isToday(day) && "bg-muted/40"
                       )}
@@ -382,33 +389,37 @@ export default function CalendarPage() {
                       </div>
                     </div>
 
-                    {/* Days Grid with Reservation Bars */}
-                    <div className="flex-1 relative h-[52px]">
+                    {/* Days Grid with CSS Grid for precise positioning */}
+                    <div 
+                      className="flex-1 relative h-[52px]"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(${daysInMonth}, minmax(40px, 1fr))`,
+                      }}
+                    >
                       {/* Background day cells (drop targets) */}
-                      <div className="absolute inset-0 flex">
-                        {days.map(day => (
-                          <div
-                            key={day}
-                            className={cn(
-                              "flex-1 min-w-[40px] border-r border-border/10 last:border-r-0 transition-colors",
-                              isWeekend(day) && "bg-muted/20",
-                              dropTarget?.roomNumber === room.roomNumber && dropTarget?.day === day && "bg-primary/20"
-                            )}
-                            onDragOver={(e) => handleDragOver(e, room.roomNumber, day)}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => handleDrop(e, room.roomNumber, day)}
-                          />
-                        ))}
-                      </div>
+                      {days.map(day => (
+                        <div
+                          key={day}
+                          className={cn(
+                            "border-r border-border/10 last:border-r-0 transition-colors",
+                            isWeekend(day) && "bg-muted/20",
+                            dropTarget?.roomNumber === room.roomNumber && dropTarget?.day === day && "bg-primary/20"
+                          )}
+                          onDragOver={(e) => handleDragOver(e, room.roomNumber, day)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={(e) => handleDrop(e, room.roomNumber, day)}
+                        />
+                      ))}
 
-                      {/* Reservation Bars */}
+                      {/* Reservation Bars - positioned absolutely over the grid */}
                       {bars.map(bar => {
                         const config = statusConfig[bar.status] || statusConfig.PENDING;
-                        // Position bar correctly: startDay-1 because array is 0-indexed for percentage
-                        const startPercent = ((bar.startDay - 1) / daysInMonth) * 100;
-                        // Width: number of days the bar spans
-                        const spanDays = bar.endDay - bar.startDay + 1;
-                        const widthPercent = (spanDays / daysInMonth) * 100;
+                        
+                        // CSS Grid positioning: gridColumnStart is 1-indexed (day number)
+                        // gridColumnEnd is exclusive, so for a bar spanning days 22-22, we use start=22, end=23
+                        const gridColumnStart = bar.startDay;
+                        const gridColumnEnd = bar.endDay + 1;
 
                         return (
                           <div
@@ -426,11 +437,13 @@ export default function CalendarPage() {
                               dragState?.reservationId === bar.id && "opacity-50"
                             )}
                             style={{
-                              left: `${startPercent}%`,
-                              width: `${widthPercent}%`,
+                              // Calculate position based on grid columns
+                              // Each column = 100% / daysInMonth
+                              left: `calc(${(gridColumnStart - 1) / daysInMonth * 100}%)`,
+                              width: `calc(${(gridColumnEnd - gridColumnStart) / daysInMonth * 100}%)`,
                               minWidth: '40px',
                             }}
-                            title={`${bar.guestName} - ${config.label} - Click to view details, drag to move`}
+                            title={`${bar.guestName} | ${bar.checkIn} → ${bar.checkOut} | start=${bar.startDay} end=${bar.endDay} | ${config.label}`}
                           >
                             <GripVertical className="w-3 h-3 opacity-0 group-hover:opacity-60 flex-shrink-0 mr-1" />
                             <span className="text-xs font-medium truncate">
