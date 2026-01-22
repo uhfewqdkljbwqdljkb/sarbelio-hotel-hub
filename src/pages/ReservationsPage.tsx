@@ -142,8 +142,8 @@ const ReservationsPage: React.FC = () => {
       toast.error('Please select a guest');
       return;
     }
-    if (guestMode === 'new' && (!newGuest.firstName || !newGuest.lastName || !newGuest.email)) {
-      toast.error('Please fill in guest details');
+    if (guestMode === 'new' && (!newGuest.firstName || !newGuest.lastName)) {
+      toast.error('Please fill in guest first and last name');
       return;
     }
     if (!selectedRoomId) {
@@ -478,7 +478,7 @@ const ReservationsPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Email *</Label>
+                      <Label>Email (Optional)</Label>
                       <Input
                         type="email"
                         value={newGuest.email}
