@@ -76,6 +76,9 @@ const ReservationsPage: React.FC = () => {
   const [source, setSource] = useState<BookingSource>('DIRECT');
   const [status, setStatus] = useState<ReservationStatus>('PENDING');
   const [isDayStay, setIsDayStay] = useState(false);
+  const [extraBedCount, setExtraBedCount] = useState(0);
+  const [extraWoodCount, setExtraWoodCount] = useState(0);
+  const [discountAmount, setDiscountAmount] = useState(0);
 
   const availableRooms = rooms.filter(room => 
     room.status === 'AVAILABLE' || room.status === 'RESERVED'
@@ -92,12 +95,21 @@ const ReservationsPage: React.FC = () => {
     const room = rooms.find(r => r.id === selectedRoomId);
     if (!room) return 0;
     
+    let baseAmount = 0;
     if (isDayStay) {
-      // Use day stay price if available, otherwise use base price
-      return room.dayStayPrice || room.price;
+      baseAmount = room.dayStayPrice || room.price;
+    } else {
+      baseAmount = room.price * calculateNights();
     }
     
-    return room.price * calculateNights();
+    // Add extras
+    const extraBedTotal = extraBedCount * 20; // $20 per extra bed
+    const extraWoodTotal = extraWoodCount * 15; // $15 per extra wood
+    
+    // Apply discount
+    const total = baseAmount + extraBedTotal + extraWoodTotal - discountAmount;
+    
+    return Math.max(0, total); // Ensure total is not negative
   };
 
   const resetForm = () => {
@@ -113,6 +125,9 @@ const ReservationsPage: React.FC = () => {
     setStatus('PENDING');
     setGuestMode('existing');
     setIsDayStay(false);
+    setExtraBedCount(0);
+    setExtraWoodCount(0);
+    setDiscountAmount(0);
   };
 
   const handleCreateReservation = async () => {
@@ -186,6 +201,9 @@ const ReservationsPage: React.FC = () => {
         status,
         source,
         isDayStay,
+        extraBedCount,
+        extraWoodCount,
+        discountAmount,
       });
 
       toast.success('Reservation created successfully!');
@@ -552,6 +570,53 @@ const ReservationsPage: React.FC = () => {
                 />
               </div>
 
+              {/* Extra Charges & Discount */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Add-ons & Discounts</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center justify-between">
+                      <span>Extra Bed</span>
+                      <span className="text-xs text-muted-foreground">$20 each</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={extraBedCount}
+                      onChange={(e) => setExtraBedCount(Math.max(0, parseInt(e.target.value) || 0))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center justify-between">
+                      <span>Extra Wood</span>
+                      <span className="text-xs text-muted-foreground">$15 each</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={extraWoodCount}
+                      onChange={(e) => setExtraWoodCount(Math.max(0, parseInt(e.target.value) || 0))}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center justify-between">
+                    <span>Discount</span>
+                    <span className="text-xs text-muted-foreground">Fixed $ amount</span>
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      className="pl-7"
+                      value={discountAmount}
+                      onChange={(e) => setDiscountAmount(Math.max(0, parseFloat(e.target.value) || 0))}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Source and Status */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -618,7 +683,42 @@ const ReservationsPage: React.FC = () => {
                     <span className="text-muted-foreground">{isDayStay ? 'Departure:' : 'Check-out:'}</span>
                     <span>{checkOutTime}</span>
                   </div>
-                  <div className="flex justify-between text-sm font-bold">
+                  
+                  {/* Base room cost */}
+                  {(() => {
+                    const room = rooms.find(r => r.id === selectedRoomId);
+                    const baseAmount = isDayStay 
+                      ? (room?.dayStayPrice || room?.price || 0)
+                      : (room?.price || 0) * calculateNights();
+                    return (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Room Rate:</span>
+                        <span>${baseAmount.toLocaleString()}</span>
+                      </div>
+                    );
+                  })()}
+                  
+                  {/* Extra charges breakdown */}
+                  {extraBedCount > 0 && (
+                    <div className="flex justify-between text-sm text-emerald-600">
+                      <span>+ Extra Bed ({extraBedCount}x $20):</span>
+                      <span>+${(extraBedCount * 20).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {extraWoodCount > 0 && (
+                    <div className="flex justify-between text-sm text-emerald-600">
+                      <span>+ Extra Wood ({extraWoodCount}x $15):</span>
+                      <span>+${(extraWoodCount * 15).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-sm text-red-600">
+                      <span>− Discount:</span>
+                      <span>-${discountAmount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  
+                  <div className="border-t pt-2 mt-2 flex justify-between text-sm font-bold">
                     <span>Total:</span>
                     <span>${calculateTotal().toLocaleString()}</span>
                   </div>

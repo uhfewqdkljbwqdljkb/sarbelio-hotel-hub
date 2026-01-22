@@ -86,6 +86,9 @@ export interface Reservation {
   source: BookingSource;
   createdAt: string;
   isDayStay?: boolean;
+  extraBedCount?: number;
+  extraWoodCount?: number;
+  discountAmount?: number;
 }
 
 // Guest Types

@@ -991,6 +991,9 @@ export type Database = {
           check_out_time: string | null
           confirmation_code: string
           created_at: string | null
+          discount_amount: number
+          extra_bed_count: number
+          extra_wood_count: number
           guest_email: string | null
           guest_id: string | null
           guest_name: string
@@ -1015,6 +1018,9 @@ export type Database = {
           check_out_time?: string | null
           confirmation_code: string
           created_at?: string | null
+          discount_amount?: number
+          extra_bed_count?: number
+          extra_wood_count?: number
           guest_email?: string | null
           guest_id?: string | null
           guest_name: string
@@ -1039,6 +1045,9 @@ export type Database = {
           check_out_time?: string | null
           confirmation_code?: string
           created_at?: string | null
+          discount_amount?: number
+          extra_bed_count?: number
+          extra_wood_count?: number
           guest_email?: string | null
           guest_id?: string | null
           guest_name?: string
