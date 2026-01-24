@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useReservations } from '@/hooks/useReservations';
 import { useRooms } from '@/hooks/useRooms';
 import { useGuests } from '@/hooks/useGuests';
+import { useFinancialSummary } from '@/hooks/useFinancials';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import { 
   BarChart, 
@@ -19,14 +20,16 @@ const Dashboard: React.FC = () => {
   const { data: reservations = [], isLoading: resLoading } = useReservations();
   const { data: rooms = [], isLoading: roomsLoading } = useRooms();
   const { data: guests = [], isLoading: guestsLoading } = useGuests();
+  const { data: summary, isLoading: summaryLoading } = useFinancialSummary();
 
-  const isLoading = resLoading || roomsLoading || guestsLoading;
+  const isLoading = resLoading || roomsLoading || guestsLoading || summaryLoading;
 
   // Calculate stats from real data
   const totalRooms = rooms.length;
   const occupiedRooms = rooms.filter(r => r.status === 'OCCUPIED').length;
   const totalGuests = guests.length;
-  const totalRevenue = reservations.reduce((sum, r) => sum + r.totalAmount, 0);
+  // Use financial summary for accurate total revenue (rooms + restaurant + minimarket + services)
+  const totalRevenue = summary?.totalRevenue || 0;
   const pendingReservations = reservations.filter(r => r.status === 'PENDING').length;
   const confirmedReservations = reservations.filter(r => r.status === 'CONFIRMED').length;
 
