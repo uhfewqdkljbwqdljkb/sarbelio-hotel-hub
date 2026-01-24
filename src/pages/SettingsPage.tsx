@@ -11,6 +11,7 @@ import { HotelProfile, Integration } from '@/types/settings';
 import { AppRole } from '@/contexts/AuthContext';
 import { useUsers, useUpdateUserRole, useDeleteUser } from '@/hooks/useUsers';
 import AddUserDialog from '@/components/settings/AddUserDialog';
+import ChangePasswordDialog from '@/components/settings/ChangePasswordDialog';
 import { Building, Plug, Users, Star, Clock, Globe, Mail, Phone, MapPin, Save, RefreshCw, Trash2, Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -258,30 +259,36 @@ export default function SettingsPage() {
                           {new Date(user.created_at).toLocaleDateString()}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Remove User</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to remove {user.full_name || user.email}? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteUser.mutate(user.user_id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Remove
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <div className="flex items-center justify-center gap-1">
+                            <ChangePasswordDialog 
+                              userId={user.user_id} 
+                              userName={user.full_name || user.email} 
+                            />
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remove User</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to remove {user.full_name || user.email}? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteUser.mutate(user.user_id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Remove
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </td>
                       </tr>
                     ))}
