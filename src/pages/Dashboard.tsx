@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useReservations } from '@/hooks/useReservations';
 import { useRooms } from '@/hooks/useRooms';
 import { useGuests } from '@/hooks/useGuests';
@@ -12,7 +12,8 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
-import { ChevronDown, Star, Calendar, Users, Home, DollarSign, Loader2 } from 'lucide-react';
+import { ChevronDown, Calendar, Users, Home, DollarSign, Loader2 } from 'lucide-react';
+import { format, subDays, parseISO, startOfDay, isWithinInterval } from 'date-fns';
 
 const Dashboard: React.FC = () => {
   const { data: reservations = [], isLoading: resLoading } = useReservations();
@@ -29,16 +30,26 @@ const Dashboard: React.FC = () => {
   const pendingReservations = reservations.filter(r => r.status === 'PENDING').length;
   const confirmedReservations = reservations.filter(r => r.status === 'CONFIRMED').length;
 
-  // Create chart data from reservations (last 7 days mock for now)
-  const chartData = [
-    { date: 'Mon', reservations: reservations.length > 0 ? Math.floor(Math.random() * 10) : 0 },
-    { date: 'Tue', reservations: reservations.length > 0 ? Math.floor(Math.random() * 10) : 0 },
-    { date: 'Wed', reservations: reservations.length > 0 ? Math.floor(Math.random() * 10) : 0 },
-    { date: 'Thu', reservations: reservations.length > 0 ? Math.floor(Math.random() * 10) : 0 },
-    { date: 'Fri', reservations: reservations.length > 0 ? Math.floor(Math.random() * 10) : 0 },
-    { date: 'Sat', reservations: reservations.length > 0 ? Math.floor(Math.random() * 10) : 0 },
-    { date: 'Sun', reservations: reservations.length > 0 ? Math.floor(Math.random() * 10) : 0 },
-  ];
+  // Create chart data from real reservations (last 7 days)
+  const chartData = useMemo(() => {
+    const today = startOfDay(new Date());
+    const days = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = subDays(today, i);
+      const dayLabel = format(date, 'EEE');
+      
+      // Count reservations created on this day
+      const count = reservations.filter(res => {
+        const createdAt = res.createdAt ? startOfDay(parseISO(res.createdAt)) : null;
+        return createdAt && format(createdAt, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+      }).length;
+      
+      days.push({ date: dayLabel, reservations: count });
+    }
+    
+    return days;
+  }, [reservations]);
 
   if (isLoading) {
     return (
