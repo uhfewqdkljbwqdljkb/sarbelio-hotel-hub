@@ -10,10 +10,10 @@ export const Footer: React.FC = () => {
           <div className="md:col-span-1">
             <div className="flex flex-col mb-6">
               <h1 className="text-2xl font-bold tracking-tighter leading-none">SARBELIO</h1>
-              <span className="text-xs tracking-[0.3em] uppercase text-white/60">HOTEL</span>
+              <span className="text-xs tracking-[0.3em] uppercase text-white/60">CHALET SUITES</span>
             </div>
             <p className="text-sm text-white/60 leading-relaxed">
-              Where luxury meets tranquility. Experience the ultimate Caribbean getaway at Sarbelio Hotel.
+              Where the mountains meet luxury. Premium chalet suites in Mzaar Faraya, Lebanon.
             </p>
           </div>
 

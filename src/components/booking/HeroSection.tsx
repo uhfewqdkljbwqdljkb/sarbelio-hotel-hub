@@ -32,13 +32,13 @@ export const HeroSection: React.FC<HeroSectionProps> = () => {
           {/* Text Content */}
           <div className="mb-16 md:mb-24">
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold uppercase text-white leading-[1.1] md:leading-[0.95] tracking-tight text-center md:text-left drop-shadow-2xl">
-              <span className="block">Experience</span>
-              <span className="block md:ml-16">Paradise</span>
-              <span className="block md:ml-32">Today.</span>
+              <span className="block">Where the</span>
+              <span className="block md:ml-16">Mountains</span>
+              <span className="block md:ml-32">Meet Luxury</span>
             </h1>
             
             <p className="mt-8 text-sm md:text-base lg:text-lg text-white/90 font-light max-w-xl text-center md:text-left mx-auto md:mx-0 md:ml-36 leading-relaxed drop-shadow-lg">
-              Discover tranquility at Sarbelio Hotel, where luxury meets the Caribbean breeze and every moment becomes a cherished memory.
+              Premium Chalet Suites in the Heart of Mzaar Faraya. Just 5 minutes from Lebanon's premier ski resort.
             </p>
           </div>
 

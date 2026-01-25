@@ -33,7 +33,7 @@ export const ContactSection: React.FC = () => {
             </h2>
             <p className="text-slate-500 text-lg mb-10">
               Have questions or ready to book your stay? Our team is here to help 
-              make your experience at Sarbelio Hotel unforgettable.
+              make your mountain escape at Sarbelio Chalet Suites unforgettable.
             </p>
 
             <div className="space-y-6">
