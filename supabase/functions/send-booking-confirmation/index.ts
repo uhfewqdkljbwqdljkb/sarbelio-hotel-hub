@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,8 +33,67 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Authentication check - require valid user session
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error("No authorization header provided");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - No authorization header" }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Create Supabase client with the user's auth token
+    const supabaseClient = createClient(
+      SUPABASE_URL!,
+      SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    );
+
+    // Verify the user is authenticated
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      console.error("Authentication failed:", authError?.message);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - Invalid or expired token" }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    console.log("User authenticated:", user.id);
+
     const booking: BookingConfirmationRequest = await req.json();
     console.log("Booking data received:", booking);
+
+    // Verify the booking exists in the database
+    const { data: reservation, error: reservationError } = await supabaseClient
+      .from('reservations')
+      .select('*')
+      .eq('confirmation_code', booking.confirmationCode)
+      .single();
+
+    if (reservationError || !reservation) {
+      console.error("Booking not found:", reservationError?.message);
+      return new Response(
+        JSON.stringify({ error: "Booking not found" }),
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    console.log("Booking verified:", reservation.id);
 
     const emailHtml = `
       <!DOCTYPE html>
