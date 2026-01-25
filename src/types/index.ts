@@ -66,6 +66,11 @@ export interface RoomType {
 export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED' | 'NO_SHOW';
 export type BookingSource = 'DIRECT' | 'WEBSITE' | 'BOOKING_COM' | 'EXPEDIA' | 'AIRBNB' | 'WALK_IN';
 
+// Sales & Commission Types
+export type CommissionStatus = 'PENDING' | 'APPROVED' | 'PAID' | 'CANCELLED';
+export type PaymentStatus = 'UNPAID' | 'DEPOSIT_PAID' | 'PARTIALLY_PAID' | 'FULLY_PAID' | 'REFUNDED';
+export type PaymentMethod = 'CASH' | 'CREDIT_CARD' | 'BANK_TRANSFER' | 'WHISH' | 'OMT' | 'OTHER';
+
 export interface Reservation {
   id: string;
   confirmationCode: string;
@@ -89,6 +94,88 @@ export interface Reservation {
   extraBedCount?: number;
   extraWoodCount?: number;
   discountAmount?: number;
+  
+  // Sales & Commission Tracking
+  createdByUserId?: string;
+  createdByUserName?: string;
+  commissionRate?: number;
+  commissionAmount?: number;
+  commissionStatus?: CommissionStatus;
+  
+  // Deposit Tracking
+  depositAmount?: number;
+  depositDate?: string;
+  depositMethod?: PaymentMethod;
+  depositReceivedBy?: string;
+  balanceDue?: number;
+  paymentStatus?: PaymentStatus;
+}
+
+export interface CommissionProfile {
+  id: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  baseCommissionRate: number;
+  tieredRates?: CommissionTier[];
+  isActive: boolean;
+  effectiveFrom: string;
+  effectiveTo?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommissionTier {
+  minSalesAmount: number;
+  commissionRate: number;
+}
+
+export interface DepositTransaction {
+  id: string;
+  reservationId: string;
+  reservationCode?: string;
+  guestName?: string;
+  amount: number;
+  paymentMethod: PaymentMethod;
+  receivedByUserId: string;
+  receivedByUserName?: string;
+  transactionDate: string;
+  notes?: string;
+  receiptNumber?: string;
+  createdAt: string;
+}
+
+export interface SalesRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  period: string;
+  periodType: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  totalBookings: number;
+  totalRevenue: number;
+  totalCommission: number;
+  commissionStatus: CommissionStatus;
+  paidDate?: string;
+}
+
+export interface SalesLeaderboardEntry {
+  rank: number;
+  userId: string;
+  userName: string;
+  avatarUrl?: string;
+  totalBookings: number;
+  totalRevenue: number;
+  totalCommission: number;
+  conversionRate?: number;
+}
+
+export interface SalesStats {
+  totalRevenue: number;
+  totalBookings: number;
+  totalCommissions: number;
+  pendingDeposits: number;
+  collectedDeposits: number;
+  averageBookingValue: number;
 }
 
 // Guest Types

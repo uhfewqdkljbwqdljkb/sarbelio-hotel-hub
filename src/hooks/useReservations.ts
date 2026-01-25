@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Reservation, ReservationStatus, BookingSource } from '@/types';
+import { Reservation, ReservationStatus, BookingSource, PaymentMethod, CommissionStatus, PaymentStatus } from '@/types';
 
 interface DbReservation {
   id: string;
@@ -27,6 +27,19 @@ interface DbReservation {
   extra_bed_count: number;
   extra_wood_count: number;
   discount_amount: number;
+  // Sales & Commission fields
+  created_by_user_id: string | null;
+  created_by_user_name: string | null;
+  commission_rate: number | null;
+  commission_amount: number | null;
+  commission_status: string | null;
+  // Deposit fields
+  deposit_amount: number | null;
+  deposit_date: string | null;
+  deposit_method: string | null;
+  deposit_received_by: string | null;
+  balance_due: number | null;
+  payment_status: string | null;
 }
 
 const mapDbReservationToReservation = (dbRes: DbReservation): Reservation => ({
@@ -52,6 +65,19 @@ const mapDbReservationToReservation = (dbRes: DbReservation): Reservation => ({
   extraBedCount: dbRes.extra_bed_count ?? 0,
   extraWoodCount: dbRes.extra_wood_count ?? 0,
   discountAmount: dbRes.discount_amount ?? 0,
+  // Sales & Commission fields
+  createdByUserId: dbRes.created_by_user_id || undefined,
+  createdByUserName: dbRes.created_by_user_name || undefined,
+  commissionRate: dbRes.commission_rate ?? undefined,
+  commissionAmount: dbRes.commission_amount ?? undefined,
+  commissionStatus: (dbRes.commission_status as CommissionStatus) || undefined,
+  // Deposit fields
+  depositAmount: dbRes.deposit_amount ?? undefined,
+  depositDate: dbRes.deposit_date || undefined,
+  depositMethod: (dbRes.deposit_method as PaymentMethod) || undefined,
+  depositReceivedBy: dbRes.deposit_received_by || undefined,
+  balanceDue: dbRes.balance_due ?? undefined,
+  paymentStatus: (dbRes.payment_status as PaymentStatus) || undefined,
 });
 
 export function useReservations() {

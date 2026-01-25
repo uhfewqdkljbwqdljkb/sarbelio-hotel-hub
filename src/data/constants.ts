@@ -11,7 +11,8 @@ import {
   UtensilsCrossed,
   Users,
   Settings,
-  Store
+  Store,
+  TrendingUp
 } from 'lucide-react';
 import { NavItem } from '@/types';
 
@@ -28,6 +29,7 @@ export const NAVIGATION_ITEMS: NavItemWithRoles[] = [
   { id: 'minimarket', label: 'Minimarket', path: '/minimarket', icon: Store, allowedRoles: ['admin', 'fnb'] },
   { id: 'inventory', label: 'Inventory', path: '/inventory', icon: Box, allowedRoles: ['admin'] },
   { id: 'financials', label: 'Financials', path: '/financials', icon: DollarSign, allowedRoles: ['admin'] },
+  { id: 'sales', label: 'Sales', path: '/sales', icon: TrendingUp, allowedRoles: ['admin'] },
   { id: 'calendar', label: 'Calendar', path: '/calendar', icon: CalendarRange, allowedRoles: ['admin', 'reception'] },
   { id: 'concierge', label: 'Concierge', path: '/concierge', icon: UserCheck, allowedRoles: ['admin', 'reception'] },
   { id: 'guests', label: 'Guests', path: '/guests', icon: Users, allowedRoles: ['admin', 'reception'] },
