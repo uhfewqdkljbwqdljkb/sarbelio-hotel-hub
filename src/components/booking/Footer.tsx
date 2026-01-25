@@ -32,10 +32,10 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className="font-semibold mb-5 text-sm uppercase tracking-wider">Contact</h4>
             <ul className="space-y-3 text-sm text-white/60">
-              <li>123 Paradise Beach Road</li>
-              <li>Caribbean Island, 00000</li>
-              <li>+1 (555) 123-4567</li>
-              <li>reservations@sarbeliohotel.com</li>
+              <li>Sarbelio Mzaar Kfardebian</li>
+              <li>Faraya Mount Lebanon, Lebanon</li>
+              <li>+961 71 67 71 68</li>
+              <li>sarbeliomzaar@gmail.com</li>
             </ul>
           </div>
 
