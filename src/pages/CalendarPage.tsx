@@ -271,25 +271,25 @@ export default function CalendarPage() {
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center bg-muted/50 rounded-lg p-1">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center bg-muted/50 rounded-lg p-1 flex-1 sm:flex-initial">
               <Button 
                 variant="ghost" 
                 size="icon" 
                 onClick={prevMonth}
-                className="h-8 w-8 rounded-md"
+                className="h-8 w-8 rounded-md shrink-0"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="px-4 min-w-[160px] text-center font-semibold text-foreground">
+              <span className="px-2 sm:px-4 min-w-0 sm:min-w-[160px] text-center font-semibold text-foreground text-sm sm:text-base truncate flex-1">
                 {monthName}
               </span>
               <Button 
                 variant="ghost" 
                 size="icon" 
                 onClick={nextMonth}
-                className="h-8 w-8 rounded-md"
+                className="h-8 w-8 rounded-md shrink-0"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -298,10 +298,10 @@ export default function CalendarPage() {
               variant={isCurrentMonth ? "secondary" : "outline"} 
               size="sm" 
               onClick={goToToday}
-              className="h-8"
+              className="h-8 shrink-0"
             >
-              <Calendar className="w-3.5 h-3.5 mr-1.5" />
-              Today
+              <Calendar className="w-3.5 h-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Today</span>
             </Button>
           </div>
           
