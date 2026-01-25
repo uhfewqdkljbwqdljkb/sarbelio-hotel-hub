@@ -20,6 +20,7 @@ import CalendarPage from "@/pages/CalendarPage";
 import ConciergePage from "@/pages/ConciergePage";
 import GuestsPage from "@/pages/GuestsPage";
 import SettingsPage from "@/pages/SettingsPage";
+import SalesManagement from "@/pages/SalesManagement";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -101,6 +102,11 @@ const App = () => (
                     <Route path="/settings" element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <SettingsPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/sales" element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <SalesManagement />
                       </ProtectedRoute>
                     } />
                     <Route path="*" element={<NotFound />} />

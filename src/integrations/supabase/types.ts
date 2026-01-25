@@ -88,6 +88,48 @@ export type Database = {
           },
         ]
       }
+      commission_profiles: {
+        Row: {
+          base_commission_rate: number
+          created_at: string | null
+          effective_from: string
+          effective_to: string | null
+          id: string
+          is_active: boolean | null
+          tiered_rates: Json | null
+          updated_at: string | null
+          user_email: string | null
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          base_commission_rate?: number
+          created_at?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean | null
+          tiered_rates?: Json | null
+          updated_at?: string | null
+          user_email?: string | null
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          base_commission_rate?: number
+          created_at?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean | null
+          tiered_rates?: Json | null
+          updated_at?: string | null
+          user_email?: string | null
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       concierge_services: {
         Row: {
           category: Database["public"]["Enums"]["service_category"] | null
@@ -120,6 +162,59 @@ export type Database = {
           price?: number | null
         }
         Relationships: []
+      }
+      deposit_transactions: {
+        Row: {
+          amount: number
+          created_at: string | null
+          guest_name: string | null
+          id: string
+          notes: string | null
+          payment_method: string
+          receipt_number: string | null
+          received_by_user_id: string
+          received_by_user_name: string | null
+          reservation_code: string | null
+          reservation_id: string
+          transaction_date: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          guest_name?: string | null
+          id?: string
+          notes?: string | null
+          payment_method: string
+          receipt_number?: string | null
+          received_by_user_id: string
+          received_by_user_name?: string | null
+          reservation_code?: string | null
+          reservation_id: string
+          transaction_date?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          guest_name?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          receipt_number?: string | null
+          received_by_user_id?: string
+          received_by_user_name?: string | null
+          reservation_code?: string | null
+          reservation_id?: string
+          transaction_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deposit_transactions_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guests: {
         Row: {
@@ -985,12 +1080,22 @@ export type Database = {
       }
       reservations: {
         Row: {
+          balance_due: number | null
           check_in: string
           check_in_time: string | null
           check_out: string
           check_out_time: string | null
+          commission_amount: number | null
+          commission_rate: number | null
+          commission_status: string | null
           confirmation_code: string
           created_at: string | null
+          created_by_user_id: string | null
+          created_by_user_name: string | null
+          deposit_amount: number | null
+          deposit_date: string | null
+          deposit_method: string | null
+          deposit_received_by: string | null
           discount_amount: number
           extra_bed_count: number
           extra_wood_count: number
@@ -1002,6 +1107,7 @@ export type Database = {
           is_day_stay: boolean | null
           nights: number
           notes: string | null
+          payment_status: string | null
           phone: string | null
           room_id: string | null
           room_name: string | null
@@ -1012,12 +1118,22 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          balance_due?: number | null
           check_in: string
           check_in_time?: string | null
           check_out: string
           check_out_time?: string | null
+          commission_amount?: number | null
+          commission_rate?: number | null
+          commission_status?: string | null
           confirmation_code: string
           created_at?: string | null
+          created_by_user_id?: string | null
+          created_by_user_name?: string | null
+          deposit_amount?: number | null
+          deposit_date?: string | null
+          deposit_method?: string | null
+          deposit_received_by?: string | null
           discount_amount?: number
           extra_bed_count?: number
           extra_wood_count?: number
@@ -1029,6 +1145,7 @@ export type Database = {
           is_day_stay?: boolean | null
           nights?: number
           notes?: string | null
+          payment_status?: string | null
           phone?: string | null
           room_id?: string | null
           room_name?: string | null
@@ -1039,12 +1156,22 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          balance_due?: number | null
           check_in?: string
           check_in_time?: string | null
           check_out?: string
           check_out_time?: string | null
+          commission_amount?: number | null
+          commission_rate?: number | null
+          commission_status?: string | null
           confirmation_code?: string
           created_at?: string | null
+          created_by_user_id?: string | null
+          created_by_user_name?: string | null
+          deposit_amount?: number | null
+          deposit_date?: string | null
+          deposit_method?: string | null
+          deposit_received_by?: string | null
           discount_amount?: number
           extra_bed_count?: number
           extra_wood_count?: number
@@ -1056,6 +1183,7 @@ export type Database = {
           is_day_stay?: boolean | null
           nights?: number
           notes?: string | null
+          payment_status?: string | null
           phone?: string | null
           room_id?: string | null
           room_name?: string | null
@@ -1273,6 +1401,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sales_records: {
+        Row: {
+          commission_status: string | null
+          created_at: string | null
+          id: string
+          paid_date: string | null
+          period: string
+          period_type: string
+          total_bookings: number | null
+          total_commission: number | null
+          total_revenue: number | null
+          updated_at: string | null
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          commission_status?: string | null
+          created_at?: string | null
+          id?: string
+          paid_date?: string | null
+          period: string
+          period_type?: string
+          total_bookings?: number | null
+          total_commission?: number | null
+          total_revenue?: number | null
+          updated_at?: string | null
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          commission_status?: string | null
+          created_at?: string | null
+          id?: string
+          paid_date?: string | null
+          period?: string
+          period_type?: string
+          total_bookings?: number | null
+          total_commission?: number | null
+          total_revenue?: number | null
+          updated_at?: string | null
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: []
       }
       service_requests: {
         Row: {
@@ -1493,6 +1666,18 @@ export type Database = {
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
+        }[]
+      }
+      get_sales_leaderboard: {
+        Args: { p_end_date?: string; p_start_date?: string }
+        Returns: {
+          avatar_url: string
+          rank: number
+          total_bookings: number
+          total_commission: number
+          total_revenue: number
+          user_id: string
+          user_name: string
         }[]
       }
       get_user_role: {
