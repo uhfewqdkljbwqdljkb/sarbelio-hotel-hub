@@ -58,27 +58,17 @@ export function useCreateUser() {
       fullName: string;
       role: AppRole;
     }) => {
-      // Create user via Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-          data: { full_name: fullName },
-        },
+      // Use edge function to create user and assign role
+      // This preserves the admin's session and uses service role for creation
+      const { data, error } = await supabase.functions.invoke('create-staff-user', {
+        body: { email, password, fullName, role },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('User creation failed');
+      if (error) throw new Error(error.message || 'Failed to create user');
+      if (data?.error) throw new Error(data.error);
+      if (!data?.success) throw new Error('User creation failed');
 
-      // Assign role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({ user_id: authData.user.id, role });
-
-      if (roleError) throw roleError;
-
-      return authData.user;
+      return data.user;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
