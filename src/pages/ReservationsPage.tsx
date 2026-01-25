@@ -826,13 +826,20 @@ const ReservationsPage: React.FC = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'reservations' | 'past' | 'cancellations')}>
-        <TabsList className="bg-secondary">
-          <TabsTrigger value="reservations">Active Reservations</TabsTrigger>
-          <TabsTrigger value="past">
-            Past Reservations {pastCount > 0 && <span className="ml-2 bg-muted text-muted-foreground px-2 py-0.5 rounded-full text-xs">{pastCount}</span>}
+        <TabsList className="bg-secondary w-full h-auto flex-wrap sm:flex-nowrap gap-1 p-1">
+          <TabsTrigger value="reservations" className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
+            <span className="hidden sm:inline">Active Reservations</span>
+            <span className="sm:hidden">Active</span>
           </TabsTrigger>
-          <TabsTrigger value="cancellations">
-            Cancellations {cancelledCount > 0 && <span className="ml-2 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs">{cancelledCount}</span>}
+          <TabsTrigger value="past" className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
+            <span className="hidden sm:inline">Past Reservations</span>
+            <span className="sm:hidden">Past</span>
+            {pastCount > 0 && <span className="ml-1 sm:ml-2 bg-muted text-muted-foreground px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs">{pastCount}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="cancellations" className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
+            <span className="hidden sm:inline">Cancellations</span>
+            <span className="sm:hidden">Cancelled</span>
+            {cancelledCount > 0 && <span className="ml-1 sm:ml-2 bg-red-100 text-red-700 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs">{cancelledCount}</span>}
           </TabsTrigger>
         </TabsList>
 
