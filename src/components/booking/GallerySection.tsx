@@ -1,34 +1,40 @@
 import React from 'react';
+import saintCharbelStatue from '@/assets/gallery/saint-charbel-statue.jpeg';
+import livingRoom from '@/assets/gallery/living-room.jpeg';
+import snowChapel from '@/assets/gallery/snow-chapel.jpeg';
+import balconyView from '@/assets/gallery/balcony-view.jpeg';
+import cozySofa from '@/assets/gallery/cozy-sofa.jpeg';
+import diningArea from '@/assets/gallery/dining-area.jpeg';
 
 const galleryImages = [
   {
-    src: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?q=80&w=2070&auto=format&fit=crop',
-    alt: 'Hotel pool area',
+    src: balconyView,
+    alt: 'Snowy balcony with mountain view',
     span: 'col-span-2 row-span-2',
   },
   {
-    src: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?q=80&w=2070&auto=format&fit=crop',
-    alt: 'Hotel exterior',
+    src: livingRoom,
+    alt: 'Comfortable living room',
     span: 'col-span-1 row-span-1',
   },
   {
-    src: 'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?q=80&w=2070&auto=format&fit=crop',
-    alt: 'Restaurant dining',
+    src: cozySofa,
+    alt: 'Cozy sofa with decorative pillows',
     span: 'col-span-1 row-span-1',
   },
   {
-    src: 'https://images.unsplash.com/photo-1540541338287-41700207dee6?q=80&w=2070&auto=format&fit=crop',
-    alt: 'Beach view',
+    src: diningArea,
+    alt: 'Elegant dining area',
     span: 'col-span-1 row-span-1',
   },
   {
-    src: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=2070&auto=format&fit=crop',
-    alt: 'Luxury suite',
+    src: saintCharbelStatue,
+    alt: 'Saint Charbel statue at night',
     span: 'col-span-1 row-span-1',
   },
   {
-    src: 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?q=80&w=2070&auto=format&fit=crop',
-    alt: 'Spa treatment',
+    src: snowChapel,
+    alt: 'Snow-covered chapel on the mountain',
     span: 'col-span-2 row-span-1',
   },
 ];
@@ -46,7 +52,7 @@ export const GallerySection: React.FC = () => {
             Explore Our Resort
           </h2>
           <p className="text-slate-400 max-w-2xl mx-auto text-lg">
-            Take a visual journey through Sarbelio Hotel and discover the beauty 
+            Take a visual journey through Sarbelio Chalet Suites and discover the beauty 
             that awaits you.
           </p>
         </div>
