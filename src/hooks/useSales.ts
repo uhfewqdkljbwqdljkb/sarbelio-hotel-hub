@@ -22,12 +22,13 @@ export function useSalesStats() {
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
       
-      // Get reservations for this month - exclude CANCELLED and NO_SHOW
+      // Get reservations for this month - only count revenue for CONFIRMED, CHECKED_IN, CHECKED_OUT
+      // Exclude PENDING (not yet confirmed), CANCELLED, and NO_SHOW
       const { data: reservations, error } = await supabase
         .from('reservations')
         .select('total_amount, commission_amount, deposit_amount, payment_status, status')
         .gte('created_at', startOfMonth.toISOString())
-        .in('status', ['PENDING', 'CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT']);
+        .in('status', ['CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT']);
       
       if (error) throw error;
       
