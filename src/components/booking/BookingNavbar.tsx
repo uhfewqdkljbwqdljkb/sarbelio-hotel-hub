@@ -17,7 +17,7 @@ export const BookingNavbar: React.FC = () => {
       {/* Logo */}
       <div className="flex flex-col z-50">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tighter leading-none text-white">SARBELIO</h1>
-        <span className="text-xs tracking-[0.3em] uppercase opacity-80 text-white/80">HOTEL</span>
+        <span className="text-xs tracking-[0.3em] uppercase opacity-80 text-white/80">PREMIUM SERVICED RESIDENCE</span>
       </div>
 
       {/* Desktop Links */}
