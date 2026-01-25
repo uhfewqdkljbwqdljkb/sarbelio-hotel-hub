@@ -1,15 +1,16 @@
 import React from 'react';
-import { Waves, Utensils, Dumbbell, Wifi, Car, Coffee, Sparkles, Sun } from 'lucide-react';
+import { ChefHat, Tv, Flame, Thermometer, Bath, Zap, Wifi, Droplets, Phone } from 'lucide-react';
 
 const amenities = [
-  { icon: Waves, title: 'Infinity Pool', description: 'Overlooking the ocean with stunning sunset views' },
-  { icon: Utensils, title: 'Fine Dining', description: 'World-class cuisine prepared by expert chefs' },
-  { icon: Dumbbell, title: 'Fitness Center', description: 'State-of-the-art equipment open 24/7' },
-  { icon: Wifi, title: 'High-Speed WiFi', description: 'Complimentary throughout the entire resort' },
-  { icon: Car, title: 'Valet Parking', description: 'Secure parking with 24-hour valet service' },
-  { icon: Coffee, title: 'Room Service', description: 'Available around the clock for your convenience' },
-  { icon: Sparkles, title: 'Spa & Wellness', description: 'Rejuvenating treatments and massage therapy' },
-  { icon: Sun, title: 'Private Beach', description: 'Exclusive beach access for our guests' },
+  { icon: ChefHat, title: 'Fully Equipped Kitchen', description: 'Everything you need to prepare your favorite meals' },
+  { icon: Tv, title: 'Entertainment', description: 'Cable TV, Netflix, and YouTube ready for your enjoyment' },
+  { icon: Flame, title: 'Chimney & BBQ Area', description: 'Cozy fireplace and outdoor grilling space' },
+  { icon: Thermometer, title: 'Central Heating', description: 'Chauffage system keeps you warm all winter' },
+  { icon: Bath, title: 'Fully Equipped Bathroom', description: 'Modern amenities for your comfort' },
+  { icon: Zap, title: 'Electricity All Night', description: 'We provide uninterrupted power throughout the night' },
+  { icon: Wifi, title: 'Unlimited Fast WiFi', description: 'High-speed internet throughout your stay' },
+  { icon: Droplets, title: 'Running Hot Water', description: 'Hot water available around the clock' },
+  { icon: Phone, title: '24/7 Desk Service', description: 'We are here for anything you need during your stay' },
 ];
 
 export const AmenitiesSection: React.FC = () => {
@@ -19,19 +20,19 @@ export const AmenitiesSection: React.FC = () => {
         {/* Section Header */}
         <div className="text-center mb-16">
           <span className="text-xs font-semibold text-[#8c7a6b] uppercase tracking-[0.3em] mb-4 block">
-            Hotel Amenities
+            Chalet Amenities
           </span>
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
             Everything You Need
           </h2>
           <p className="text-slate-500 max-w-2xl mx-auto text-lg">
-            Sarbelio Hotel offers an array of premium amenities designed to make your stay 
+            Sarbelio Chalet Suites offers premium amenities designed to make your mountain stay 
             as comfortable and memorable as possible.
           </p>
         </div>
 
         {/* Amenities Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {amenities.map((amenity, index) => (
             <div 
               key={index}
