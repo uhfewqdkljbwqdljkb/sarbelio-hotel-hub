@@ -15,7 +15,7 @@ export const HeroSection: React.FC<HeroSectionProps> = () => {
       <div className="absolute inset-0 z-0">
         <img 
           src={heroBackground} 
-          alt="Sarbelio Hotel mountain view at Faraya Chabrouh"
+          alt="Sarbelio Premium Serviced Residence mountain view at Faraya Chabrouh"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-slate-900/30 mix-blend-multiply"></div>
