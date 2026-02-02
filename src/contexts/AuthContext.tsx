@@ -43,6 +43,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserData = async (userId: string) => {
     try {
+      console.log('[DEBUG AUTH] Fetching data for auth.uid():', userId);
+      
       // Fetch both profile + role in parallel.
       // IMPORTANT: use RPC for role to avoid any slow/recursive RLS policy evaluation on user_roles.
       const [{ data: profileData, error: profileError }, { data: roleData, error: roleError }] =
@@ -54,6 +56,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .maybeSingle(),
           supabase.rpc('get_user_role', { _user_id: userId }),
         ]);
+
+      console.log('[DEBUG AUTH] Profile found:', profileData);
+      console.log('[DEBUG AUTH] Role found:', roleData);
 
       if (profileError) {
         console.error('Error fetching profile:', profileError);
