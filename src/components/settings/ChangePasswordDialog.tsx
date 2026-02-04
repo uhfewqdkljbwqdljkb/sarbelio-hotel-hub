@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,16 @@ import { Label } from '@/components/ui/label';
 import { Key, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { z } from 'zod';
+import { FormErrorSummary, getInputErrorClass } from '@/components/ui/form-error';
+
+const passwordSchema = z.object({
+  newPassword: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
 
 interface ChangePasswordDialogProps {
   userId: string;
@@ -18,19 +28,35 @@ export default function ChangePasswordDialog({ userId, userName }: ChangePasswor
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitted, setSubmitted] = useState(false);
+
+  const validationResult = useMemo(() => {
+    return passwordSchema.safeParse({ newPassword, confirmPassword });
+  }, [newPassword, confirmPassword]);
+
+  const errors = useMemo(() => {
+    const errorMap: Record<string, string> = {};
+    if (!validationResult.success) {
+      validationResult.error.errors.forEach((err) => {
+        const field = err.path[0] as string;
+        if (touched[field] || submitted) {
+          errorMap[field] = err.message;
+        }
+      });
+    }
+    return errorMap;
+  }, [validationResult, touched, submitted]);
+
+  const handleBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setSubmitted(true);
 
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+    if (!validationResult.success) {
       return;
     }
 
@@ -55,9 +81,11 @@ export default function ChangePasswordDialog({ userId, userName }: ChangePasswor
       setOpen(false);
       setNewPassword('');
       setConfirmPassword('');
+      setTouched({});
+      setSubmitted(false);
     } catch (err) {
       console.error('Password update error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update password');
+      toast.error(err instanceof Error ? err.message : 'Failed to update password');
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +96,8 @@ export default function ChangePasswordDialog({ userId, userName }: ChangePasswor
     if (!isOpen) {
       setNewPassword('');
       setConfirmPassword('');
-      setError('');
+      setTouched({});
+      setSubmitted(false);
     }
   };
 
@@ -87,6 +116,10 @@ export default function ChangePasswordDialog({ userId, userName }: ChangePasswor
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {Object.keys(errors).length > 0 && (
+            <FormErrorSummary errors={errors} />
+          )}
+          
           <div className="space-y-2">
             <Label htmlFor="newPassword">New Password</Label>
             <div className="relative">
@@ -95,8 +128,9 @@ export default function ChangePasswordDialog({ userId, userName }: ChangePasswor
                 type={showPassword ? 'text' : 'password'}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                onBlur={() => handleBlur('newPassword')}
                 placeholder="Enter new password"
-                className="pr-10"
+                className={`pr-10 ${getInputErrorClass(!!errors.newPassword)}`}
               />
               <button
                 type="button"
@@ -106,6 +140,9 @@ export default function ChangePasswordDialog({ userId, userName }: ChangePasswor
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {errors.newPassword && (
+              <p className="text-xs text-destructive">{errors.newPassword}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -115,13 +152,14 @@ export default function ChangePasswordDialog({ userId, userName }: ChangePasswor
               type={showPassword ? 'text' : 'password'}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              onBlur={() => handleBlur('confirmPassword')}
               placeholder="Confirm new password"
+              className={getInputErrorClass(!!errors.confirmPassword)}
             />
+            {errors.confirmPassword && (
+              <p className="text-xs text-destructive">{errors.confirmPassword}</p>
+            )}
           </div>
-
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>

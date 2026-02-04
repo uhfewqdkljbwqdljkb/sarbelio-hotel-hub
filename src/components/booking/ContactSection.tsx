@@ -1,9 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { z } from 'zod';
+import { FormErrorSummary, getInputErrorClass } from '@/components/ui/form-error';
+
+const contactSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
+  email: z.string().email('Please enter a valid email address').max(255, 'Email must be less than 255 characters'),
+  phone: z.string().optional(),
+  message: z.string().min(1, 'Message is required').max(1000, 'Message must be less than 1000 characters'),
+});
 
 export const ContactSection: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -12,11 +21,42 @@ export const ContactSection: React.FC = () => {
     phone: '',
     message: '',
   });
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitted, setSubmitted] = useState(false);
+
+  const validationResult = useMemo(() => {
+    return contactSchema.safeParse(formData);
+  }, [formData]);
+
+  const errors = useMemo(() => {
+    const errorMap: Record<string, string> = {};
+    if (!validationResult.success) {
+      validationResult.error.errors.forEach((err) => {
+        const field = err.path[0] as string;
+        if (touched[field] || submitted) {
+          errorMap[field] = err.message;
+        }
+      });
+    }
+    return errorMap;
+  }, [validationResult, touched, submitted]);
+
+  const handleBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitted(true);
+    
+    if (!validationResult.success) {
+      return;
+    }
+    
     toast.success('Thank you for your message! We will get back to you shortly.');
     setFormData({ name: '', email: '', phone: '', message: '' });
+    setTouched({});
+    setSubmitted(false);
   };
 
   return (
@@ -82,41 +122,59 @@ export const ContactSection: React.FC = () => {
           {/* Contact Form */}
           <div className="bg-white p-8 md:p-10 rounded-2xl shadow-sm">
             <h3 className="text-2xl font-bold text-slate-900 mb-6">Send us a message</h3>
+            
+            {Object.keys(errors).length > 0 && (
+              <FormErrorSummary errors={errors} className="mb-6" />
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
+              <div className="space-y-1">
                 <Input
-                  placeholder="Your Name"
+                  placeholder="Your Name *"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="h-12 border-slate-200 focus:border-[#8c7a6b] focus:ring-[#8c7a6b]"
-                  required
+                  onBlur={() => handleBlur('name')}
+                  className={`h-12 border-slate-200 focus:border-[#8c7a6b] focus:ring-[#8c7a6b] ${getInputErrorClass(!!errors.name)}`}
                 />
+                {errors.name && (
+                  <p className="text-xs text-destructive">{errors.name}</p>
+                )}
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
-                <Input
-                  type="email"
-                  placeholder="Email Address"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="h-12 border-slate-200 focus:border-[#8c7a6b] focus:ring-[#8c7a6b]"
-                  required
-                />
-                <Input
-                  type="tel"
-                  placeholder="Phone Number"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="h-12 border-slate-200 focus:border-[#8c7a6b] focus:ring-[#8c7a6b]"
-                />
+                <div className="space-y-1">
+                  <Input
+                    type="email"
+                    placeholder="Email Address *"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onBlur={() => handleBlur('email')}
+                    className={`h-12 border-slate-200 focus:border-[#8c7a6b] focus:ring-[#8c7a6b] ${getInputErrorClass(!!errors.email)}`}
+                  />
+                  {errors.email && (
+                    <p className="text-xs text-destructive">{errors.email}</p>
+                  )}
+                </div>
+                <div>
+                  <Input
+                    type="tel"
+                    placeholder="Phone Number"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="h-12 border-slate-200 focus:border-[#8c7a6b] focus:ring-[#8c7a6b]"
+                  />
+                </div>
               </div>
-              <div>
+              <div className="space-y-1">
                 <Textarea
-                  placeholder="How can we help you?"
+                  placeholder="How can we help you? *"
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="min-h-[120px] border-slate-200 focus:border-[#8c7a6b] focus:ring-[#8c7a6b] resize-none"
-                  required
+                  onBlur={() => handleBlur('message')}
+                  className={`min-h-[120px] border-slate-200 focus:border-[#8c7a6b] focus:ring-[#8c7a6b] resize-none ${getInputErrorClass(!!errors.message)}`}
                 />
+                {errors.message && (
+                  <p className="text-xs text-destructive">{errors.message}</p>
+                )}
               </div>
               <Button 
                 type="submit"

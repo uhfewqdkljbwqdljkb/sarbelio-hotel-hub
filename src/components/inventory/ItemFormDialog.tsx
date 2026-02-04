@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,15 @@ import { InventoryItem, Supplier, InventoryCategory, ItemDestination } from '@/t
 import { categoryLabels, destinationLabels } from './InventoryConstants';
 import { Plus } from 'lucide-react';
 import SupplierFormDialog from './SupplierFormDialog';
+import { z } from 'zod';
+import { FormErrorSummary, getInputErrorClass } from '@/components/ui/form-error';
+
+const itemSchema = z.object({
+  name: z.string().min(1, 'Item name is required'),
+  sku: z.string().min(1, 'SKU is required'),
+  supplierId: z.string().min(1, 'Please select a supplier'),
+  minStock: z.number().min(0, 'Min stock must be 0 or greater'),
+});
 
 interface ItemFormDialogProps {
   open: boolean;
@@ -27,23 +36,49 @@ export default function ItemFormDialog({
   onCreateSupplier,
 }: ItemFormDialogProps) {
   const [formData, setFormData] = useState({
-    name: editingItem?.name || '',
-    sku: editingItem?.sku || '',
-    category: editingItem?.category || 'FOOD' as InventoryCategory,
-    unit: editingItem?.unit || 'pcs',
-    minStock: editingItem?.minStock || 10,
-    maxStock: editingItem?.maxStock || 100,
-    unitCost: editingItem?.unitCost || 0,
-    sellPrice: editingItem?.sellPrice || 0,
-    location: editingItem?.location || '',
-    destination: editingItem?.destination || 'INTERNAL' as ItemDestination,
-    supplierId: editingItem?.supplierId || '',
+    name: '',
+    sku: '',
+    category: 'FOOD' as InventoryCategory,
+    unit: 'pcs',
+    minStock: 10,
+    maxStock: 100,
+    unitCost: 0,
+    sellPrice: 0,
+    location: '',
+    destination: 'INTERNAL' as ItemDestination,
+    supplierId: '',
   });
-  
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitted, setSubmitted] = useState(false);
   const [supplierDialogOpen, setSupplierDialogOpen] = useState(false);
 
+  const validationResult = useMemo(() => {
+    return itemSchema.safeParse(formData);
+  }, [formData]);
+
+  const errors = useMemo(() => {
+    const errorMap: Record<string, string> = {};
+    if (!validationResult.success) {
+      validationResult.error.errors.forEach((err) => {
+        const field = err.path[0] as string;
+        if (touched[field] || submitted) {
+          errorMap[field] = err.message;
+        }
+      });
+    }
+    return errorMap;
+  }, [validationResult, touched, submitted]);
+
+  const handleBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
+
   const handleSave = () => {
-    if (!formData.name.trim() || !formData.sku.trim()) return;
+    setSubmitted(true);
+    
+    if (!validationResult.success) {
+      return;
+    }
     
     const supplier = suppliers.find(s => s.id === formData.supplierId);
     
@@ -102,6 +137,8 @@ export default function ItemFormDialog({
         supplierId: '',
       });
     }
+    setTouched({});
+    setSubmitted(false);
     onOpenChange(isOpen);
   };
 
@@ -113,22 +150,36 @@ export default function ItemFormDialog({
             <DialogTitle>{editingItem ? 'Edit Item' : 'Add Inventory Item'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {Object.keys(errors).length > 0 && (
+              <FormErrorSummary errors={errors} />
+            )}
+            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Name *</Label>
                 <Input 
                   value={formData.name} 
                   onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))} 
+                  onBlur={() => handleBlur('name')}
                   placeholder="Item name" 
+                  className={getInputErrorClass(!!errors.name)}
                 />
+                {errors.name && (
+                  <p className="text-xs text-destructive">{errors.name}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>SKU *</Label>
                 <Input 
                   value={formData.sku} 
                   onChange={(e) => setFormData(p => ({ ...p, sku: e.target.value }))} 
+                  onBlur={() => handleBlur('sku')}
                   placeholder="SKU-001" 
+                  className={getInputErrorClass(!!errors.sku)}
                 />
+                {errors.sku && (
+                  <p className="text-xs text-destructive">{errors.sku}</p>
+                )}
               </div>
             </div>
             
@@ -156,8 +207,14 @@ export default function ItemFormDialog({
             <div className="space-y-2">
               <Label>Supplier *</Label>
               <div className="flex gap-2">
-                <Select value={formData.supplierId} onValueChange={(v) => setFormData(p => ({ ...p, supplierId: v }))}>
-                  <SelectTrigger className="flex-1">
+                <Select 
+                  value={formData.supplierId} 
+                  onValueChange={(v) => {
+                    setFormData(p => ({ ...p, supplierId: v }));
+                    setTouched(prev => ({ ...prev, supplierId: true }));
+                  }}
+                >
+                  <SelectTrigger className={`flex-1 ${getInputErrorClass(!!errors.supplierId)}`}>
                     <SelectValue placeholder="Select supplier" />
                   </SelectTrigger>
                   <SelectContent>
@@ -175,6 +232,9 @@ export default function ItemFormDialog({
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
+              {errors.supplierId && (
+                <p className="text-xs text-destructive">{errors.supplierId}</p>
+              )}
               <p className="text-xs text-muted-foreground">Link this item to a supplier for ordering</p>
             </div>
             
@@ -185,7 +245,12 @@ export default function ItemFormDialog({
                   type="number" 
                   value={formData.minStock} 
                   onChange={(e) => setFormData(p => ({ ...p, minStock: parseFloat(e.target.value) || 0 }))} 
+                  onBlur={() => handleBlur('minStock')}
+                  className={getInputErrorClass(!!errors.minStock)}
                 />
+                {errors.minStock && (
+                  <p className="text-xs text-destructive">{errors.minStock}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Max Stock</Label>
