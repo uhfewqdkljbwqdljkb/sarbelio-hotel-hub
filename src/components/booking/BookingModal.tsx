@@ -122,11 +122,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({ open, onClose }) => 
         title: 'Booking Confirmed!',
         description: `Your confirmation code is ${code}. A confirmation email has been sent.`,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Booking error:', error);
+      
+      // Check if this is a room availability conflict
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isAvailabilityError = errorMessage.includes('already booked') || 
+                                   errorMessage.includes('overlapping') ||
+                                   errorMessage.includes('Room is already booked');
+      
       toast({
-        title: 'Booking Failed',
-        description: 'There was an error processing your booking. Please try again.',
+        title: isAvailabilityError ? 'Room No Longer Available' : 'Booking Failed',
+        description: isAvailabilityError 
+          ? 'Sorry, this room has been booked by another guest for the selected dates. Please choose different dates or another room.'
+          : 'There was an error processing your booking. Please try again.',
         variant: 'destructive',
       });
     } finally {

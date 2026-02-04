@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { RoomCard } from './RoomCard';
 import { useRooms } from '@/hooks/useRooms';
 import { useBooking } from '@/contexts/BookingContext';
+import { useCalendarReservations } from '@/hooks/useCalendar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Room } from '@/types';
+import { format } from 'date-fns';
 
 interface RoomsSectionProps {
   onBookRoom: () => void;
@@ -19,14 +21,43 @@ const roomImages: Record<string, string> = {
 
 export const RoomsSection: React.FC<RoomsSectionProps> = ({ onBookRoom }) => {
   const { data: rooms, isLoading } = useRooms();
+  const { data: reservations } = useCalendarReservations();
   const { bookingData, setSelectedRoom } = useBooking();
 
-  // Only show available rooms
-  const availableRooms = rooms?.filter(room => room.status === 'AVAILABLE') || [];
-
-  // Filter by capacity if guests are selected
   const totalGuests = bookingData.adults + bookingData.children;
-  const filteredRooms = availableRooms.filter(room => room.capacity >= totalGuests);
+  const { checkIn, checkOut } = bookingData;
+
+  // Check if a room is available for the selected dates
+  const isRoomAvailableForDates = (roomId: string): boolean => {
+    if (!checkIn || !checkOut || !reservations) return true;
+    
+    const checkInStr = format(checkIn, 'yyyy-MM-dd');
+    const checkOutStr = format(checkOut, 'yyyy-MM-dd');
+    
+    // Check for overlapping reservations
+    const hasOverlap = reservations.some(res => {
+      if (res.roomId !== roomId) return false;
+      if (['CANCELLED', 'NO_SHOW', 'CHECKED_OUT'].includes(res.status)) return false;
+      
+      // Date overlap check: new check-in is before existing check-out AND new check-out is after existing check-in
+      return checkInStr < res.checkOut && checkOutStr > res.checkIn;
+    });
+    
+    return !hasOverlap;
+  };
+
+  // Filter rooms by status, capacity, and availability for selected dates
+  const filteredRooms = useMemo(() => {
+    const baseRooms = rooms?.filter(room => room.status === 'AVAILABLE') || [];
+    const capacityFiltered = baseRooms.filter(room => room.capacity >= totalGuests);
+    
+    // If dates are selected, also filter by date availability
+    if (checkIn && checkOut) {
+      return capacityFiltered.filter(room => isRoomAvailableForDates(room.id));
+    }
+    
+    return capacityFiltered;
+  }, [rooms, totalGuests, checkIn, checkOut, reservations]);
 
   const getImageForRoom = (name: string) => {
     const lowerName = name.toLowerCase();
@@ -84,9 +115,11 @@ export const RoomsSection: React.FC<RoomsSectionProps> = ({ onBookRoom }) => {
         ) : filteredRooms.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-slate-500 text-lg">
-              {availableRooms.length === 0 
+              {rooms?.length === 0 
                 ? 'No rooms available at the moment. Please check back later.'
-                : `No rooms available for ${totalGuests} guests. Please adjust your guest count.`
+                : checkIn && checkOut
+                  ? 'No rooms available for the selected dates and guest count. Please try different dates.'
+                  : `No rooms available for ${totalGuests} guests. Please adjust your guest count.`
               }
             </p>
           </div>
