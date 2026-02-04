@@ -1691,6 +1691,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_room_available: {
+        Args: {
+          p_check_in: string
+          p_check_out: string
+          p_exclude_reservation_id?: string
+          p_room_id: string
+        }
+        Returns: boolean
+      }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
