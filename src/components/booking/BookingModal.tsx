@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Check, Loader2, Calendar, Users, BedDouble, CreditCard } from 'lucide-react';
+import { FormErrorSummary, getInputErrorClass } from '@/components/ui/form-error';
+import { z } from 'zod';
 
 interface BookingModalProps {
   open: boolean;
@@ -20,11 +22,19 @@ interface BookingModalProps {
 
 type BookingStep = 'details' | 'review' | 'confirmation';
 
+const guestInfoSchema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Please enter a valid email address'),
+  phone: z.string().min(1, 'Phone number is required'),
+});
+
 export const BookingModal: React.FC<BookingModalProps> = ({ open, onClose }) => {
   const { bookingData, setGuestInfo, nights, totalPrice, resetBooking } = useBooking();
   const [step, setStep] = useState<BookingStep>('details');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmationCode, setConfirmationCode] = useState('');
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   
   const createReservation = useCreateReservation();
   const createGuest = useCreateGuest();
@@ -32,11 +42,47 @@ export const BookingModal: React.FC<BookingModalProps> = ({ open, onClose }) => 
 
   const { guestInfo, selectedRoom, checkIn, checkOut, adults, children } = bookingData;
 
-  const isDetailsValid = 
-    guestInfo.firstName.trim() !== '' &&
-    guestInfo.lastName.trim() !== '' &&
-    guestInfo.email.trim() !== '' &&
-    guestInfo.phone.trim() !== '';
+  const validationResult = useMemo(() => {
+    return guestInfoSchema.safeParse(guestInfo);
+  }, [guestInfo]);
+
+  const errors = useMemo(() => {
+    const errorMap: Record<string, string> = {};
+    if (!validationResult.success) {
+      validationResult.error.errors.forEach((err) => {
+        const field = err.path[0] as string;
+        if (touched[field]) {
+          errorMap[field] = err.message;
+        }
+      });
+    }
+    return errorMap;
+  }, [validationResult, touched]);
+
+  const allErrors = useMemo(() => {
+    const errorMap: Record<string, string> = {};
+    if (!validationResult.success) {
+      validationResult.error.errors.forEach((err) => {
+        const field = err.path[0] as string;
+        errorMap[field] = err.message;
+      });
+    }
+    return errorMap;
+  }, [validationResult]);
+
+  const isDetailsValid = validationResult.success;
+
+  const handleBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
+
+  const handleContinue = () => {
+    // Mark all fields as touched to show all errors
+    setTouched({ firstName: true, lastName: true, email: true, phone: true });
+    if (isDetailsValid) {
+      setStep('review');
+    }
+  };
 
   const handleSubmit = async () => {
     if (!selectedRoom || !checkIn || !checkOut) return;
@@ -148,6 +194,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ open, onClose }) => 
       resetBooking();
     }
     setStep('details');
+    setTouched({});
     onClose();
   };
 
@@ -188,6 +235,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({ open, onClose }) => 
               </div>
             </div>
 
+            {/* Error Summary */}
+            {Object.keys(errors).length > 0 && (
+              <FormErrorSummary errors={errors} />
+            )}
+
             {/* Guest Form */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -196,8 +248,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({ open, onClose }) => 
                   id="firstName"
                   value={guestInfo.firstName}
                   onChange={(e) => setGuestInfo({ firstName: e.target.value })}
+                  onBlur={() => handleBlur('firstName')}
                   placeholder="John"
+                  className={getInputErrorClass(!!errors.firstName)}
                 />
+                {errors.firstName && (
+                  <p className="text-xs text-destructive">{errors.firstName}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name *</Label>
@@ -205,8 +262,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({ open, onClose }) => 
                   id="lastName"
                   value={guestInfo.lastName}
                   onChange={(e) => setGuestInfo({ lastName: e.target.value })}
+                  onBlur={() => handleBlur('lastName')}
                   placeholder="Doe"
+                  className={getInputErrorClass(!!errors.lastName)}
                 />
+                {errors.lastName && (
+                  <p className="text-xs text-destructive">{errors.lastName}</p>
+                )}
               </div>
             </div>
 
@@ -217,8 +279,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({ open, onClose }) => 
                 type="email"
                 value={guestInfo.email}
                 onChange={(e) => setGuestInfo({ email: e.target.value })}
+                onBlur={() => handleBlur('email')}
                 placeholder="john.doe@email.com"
+                className={getInputErrorClass(!!errors.email)}
               />
+              {errors.email && (
+                <p className="text-xs text-destructive">{errors.email}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -229,8 +296,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({ open, onClose }) => 
                   type="tel"
                   value={guestInfo.phone}
                   onChange={(e) => setGuestInfo({ phone: e.target.value })}
+                  onBlur={() => handleBlur('phone')}
                   placeholder="+1 234 567 8900"
+                  className={getInputErrorClass(!!errors.phone)}
                 />
+                {errors.phone && (
+                  <p className="text-xs text-destructive">{errors.phone}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="nationality">Nationality</Label>
@@ -260,8 +332,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ open, onClose }) => 
                 <p className="text-2xl font-bold text-slate-900">${totalPrice.toLocaleString()}</p>
               </div>
               <Button
-                onClick={() => setStep('review')}
-                disabled={!isDetailsValid}
+                onClick={handleContinue}
+                disabled={!isDetailsValid && Object.keys(touched).length > 0}
                 className="bg-[#8c7a6b] hover:bg-[#7a6a5d] px-8"
               >
                 Continue to Review

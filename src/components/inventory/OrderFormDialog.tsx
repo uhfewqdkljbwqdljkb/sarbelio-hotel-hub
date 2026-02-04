@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { InventoryItem, Supplier, OrderTemplate, PurchaseOrderItem } from '@/types/inventory';
+import { FormErrorSummary, getInputErrorClass } from '@/components/ui/form-error';
 
 interface OrderFormDialogProps {
   open: boolean;
@@ -32,6 +33,7 @@ export default function OrderFormDialog({
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [orderItems, setOrderItems] = useState<{ itemId: string; quantity: number }[]>([]);
+  const [submitted, setSubmitted] = useState(false);
 
   // Get items for selected supplier
   const supplierItems = items.filter(item => item.supplierId === selectedSupplierId);
@@ -41,8 +43,22 @@ export default function OrderFormDialog({
       setSelectedSupplierId('');
       setSelectedTemplateId('');
       setOrderItems([]);
+      setSubmitted(false);
     }
   }, [open]);
+
+  const errors = useMemo(() => {
+    const errorMap: Record<string, string> = {};
+    if (submitted) {
+      if (!selectedSupplierId) {
+        errorMap.supplier = 'Please select a supplier';
+      }
+      if (orderItems.length === 0) {
+        errorMap.items = 'Please select at least one item';
+      }
+    }
+    return errorMap;
+  }, [selectedSupplierId, orderItems, submitted]);
 
   const handleSelectTemplate = (templateId: string) => {
     const template = templates.find(t => t.id === templateId);
@@ -81,6 +97,8 @@ export default function OrderFormDialog({
   };
 
   const handleCreate = () => {
+    setSubmitted(true);
+    
     if (!selectedSupplierId || orderItems.length === 0) return;
     
     const supplier = suppliers.find(s => s.id === selectedSupplierId);
@@ -112,6 +130,10 @@ export default function OrderFormDialog({
           <DialogTitle>Create Purchase Order</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          {Object.keys(errors).length > 0 && (
+            <FormErrorSummary errors={errors} />
+          )}
+          
           {/* Template Selection */}
           {templates.length > 0 && (
             <div className="space-y-2">
@@ -141,7 +163,7 @@ export default function OrderFormDialog({
           <div className="space-y-2">
             <Label>Supplier *</Label>
             <Select value={selectedSupplierId} onValueChange={handleSupplierChange}>
-              <SelectTrigger>
+              <SelectTrigger className={getInputErrorClass(!!errors.supplier)}>
                 <SelectValue placeholder="Select supplier" />
               </SelectTrigger>
               <SelectContent>
@@ -152,13 +174,16 @@ export default function OrderFormDialog({
                 ))}
               </SelectContent>
             </Select>
+            {errors.supplier && (
+              <p className="text-xs text-destructive">{errors.supplier}</p>
+            )}
           </div>
           
           {/* Items Selection */}
           {selectedSupplierId && (
             <div className="space-y-2">
-              <Label>Select Items from {suppliers.find(s => s.id === selectedSupplierId)?.name}</Label>
-              <div className="border rounded-lg max-h-[300px] overflow-y-auto">
+              <Label>Select Items from {suppliers.find(s => s.id === selectedSupplierId)?.name} *</Label>
+              <div className={`border rounded-lg max-h-[300px] overflow-y-auto ${errors.items ? 'border-destructive' : ''}`}>
                 {supplierItems.length === 0 ? (
                   <div className="p-4 text-center text-muted-foreground">
                     No items linked to this supplier. Add items with this supplier first.
@@ -205,6 +230,9 @@ export default function OrderFormDialog({
                   })
                 )}
               </div>
+              {errors.items && (
+                <p className="text-xs text-destructive">{errors.items}</p>
+              )}
             </div>
           )}
           
@@ -234,7 +262,6 @@ export default function OrderFormDialog({
           <Button 
             onClick={handleCreate} 
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-            disabled={!selectedSupplierId || orderItems.length === 0}
           >
             Create Purchase Order
           </Button>
