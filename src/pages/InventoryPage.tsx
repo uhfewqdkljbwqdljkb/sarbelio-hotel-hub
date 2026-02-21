@@ -162,7 +162,7 @@ export default function InventoryPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-card rounded-xl border p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-blue-100"><Package className="h-5 w-5 text-blue-600" /></div><div><p className="text-sm text-muted-foreground">Total Items</p><p className="text-2xl font-bold">{items.length}</p></div></div></div>
         <div className="bg-card rounded-xl border p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-red-100"><AlertTriangle className="h-5 w-5 text-red-600" /></div><div><p className="text-sm text-muted-foreground">Low Stock</p><p className="text-2xl font-bold">{lowStockItems.length}</p></div></div></div>
-        <div className="bg-card rounded-xl border p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-green-100"><Package className="h-5 w-5 text-green-600" /></div><div><p className="text-sm text-muted-foreground">Total Value</p><p className="text-2xl font-bold">€{totalValue.toLocaleString()}</p></div></div></div>
+        <div className="bg-card rounded-xl border p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-green-100"><Package className="h-5 w-5 text-green-600" /></div><div><p className="text-sm text-muted-foreground">Total Value</p><p className="text-2xl font-bold">${totalValue.toLocaleString()}</p></div></div></div>
         <div className="bg-card rounded-xl border p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-purple-100"><Truck className="h-5 w-5 text-purple-600" /></div><div><p className="text-sm text-muted-foreground">Pending Orders</p><p className="text-2xl font-bold">{pendingOrders}</p></div></div></div>
       </div>
 
@@ -201,8 +201,8 @@ export default function InventoryPage() {
                           <td className="px-4 py-3 text-sm">{supplier?.name || <span className="text-muted-foreground">-</span>}</td>
                           <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded-full text-xs font-medium ${destinationColors[item.destination]}`}>{destinationLabels[item.destination]}</span></td>
                           <td className="px-4 py-3 text-center"><span className={status !== 'IN_STOCK' ? 'text-red-600 font-semibold' : ''}>{item.quantity}</span><span className="text-muted-foreground"> / {item.minStock}</span></td>
-                          <td className="px-4 py-3 text-right">€{item.unitCost.toFixed(2)}</td>
-                          <td className="px-4 py-3 text-right">{item.sellPrice ? `€${item.sellPrice.toFixed(2)}` : <span className="text-muted-foreground">-</span>}</td>
+                          <td className="px-4 py-3 text-right">${item.unitCost.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right">{item.sellPrice ? `$${item.sellPrice.toFixed(2)}` : <span className="text-muted-foreground">-</span>}</td>
                           <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status]}`}>{status.replace('_', ' ')}</span></td>
                           <td className="px-4 py-3 text-center"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(item); setItemDialogOpen(true); }}><Edit className="h-4 w-4" /></Button></td>
                         </tr>
@@ -229,7 +229,7 @@ export default function InventoryPage() {
                   {templates.map(template => (
                     <div key={template.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-3"><div><h3 className="font-semibold">{template.name}</h3><p className="text-sm text-muted-foreground">{template.supplierName}</p></div><Badge variant="outline">{template.items.length} items</Badge></div>
-                      <p className="text-lg font-bold text-green-600 mb-3">€{template.totalAmount.toFixed(2)}</p>
+                      <p className="text-lg font-bold text-green-600 mb-3">${template.totalAmount.toFixed(2)}</p>
                       <div className="flex gap-2">
                         <Button size="sm" className="flex-1 bg-primary text-primary-foreground" onClick={() => handleCreateOrderFromTemplate(template)}><Copy className="h-4 w-4 mr-1" />Quick Order</Button>
                         <Button size="sm" variant="outline" onClick={() => deleteTemplate(template.id)}><Trash2 className="h-4 w-4" /></Button>

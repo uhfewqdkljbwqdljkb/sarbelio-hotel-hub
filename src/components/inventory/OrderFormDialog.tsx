@@ -145,7 +145,7 @@ export default function OrderFormDialog({
                 <SelectContent>
                   {templates.map(t => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.name} - {t.supplierName} (€{t.totalAmount.toFixed(2)})
+                      {t.name} - {t.supplierName} (${t.totalAmount.toFixed(2)})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -210,7 +210,7 @@ export default function OrderFormDialog({
                             )}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            €{item.unitCost.toFixed(2)} / {item.unit} • Current: {item.quantity} {item.unit}
+                            ${item.unitCost.toFixed(2)} / {item.unit} • Current: {item.quantity} {item.unit}
                           </div>
                         </div>
                         {isSelected && (
@@ -247,14 +247,14 @@ export default function OrderFormDialog({
                   return (
                     <div key={oi.itemId} className="flex justify-between text-sm">
                       <span>{item.name} x {oi.quantity}</span>
-                      <span>€{(item.unitCost * oi.quantity).toFixed(2)}</span>
+                      <span>${(item.unitCost * oi.quantity).toFixed(2)}</span>
                     </div>
                   );
                 })}
               </div>
               <div className="border-t pt-2 mt-2 flex justify-between font-bold">
                 <span>Total</span>
-                <span>€{calculateTotal().toFixed(2)}</span>
+                <span>${calculateTotal().toFixed(2)}</span>
               </div>
             </div>
           )}

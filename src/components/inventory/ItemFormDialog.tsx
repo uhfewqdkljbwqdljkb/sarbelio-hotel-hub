@@ -301,7 +301,7 @@ export default function ItemFormDialog({
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Unit Cost (€)</Label>
+                <Label>Unit Cost ($)</Label>
                 <Input 
                   type="number" 
                   step="0.01" 
@@ -310,7 +310,7 @@ export default function ItemFormDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Sell Price (€)</Label>
+                <Label>Sell Price ($)</Label>
                 <Input 
                   type="number" 
                   step="0.01" 

@@ -152,7 +152,7 @@ export default function TemplateFormDialog({
                         <div className="flex-1">
                           <span className="font-medium">{item.name}</span>
                           <span className="text-sm text-muted-foreground ml-2">
-                            €{item.unitCost.toFixed(2)} / {item.unit}
+                            ${item.unitCost.toFixed(2)} / {item.unit}
                           </span>
                         </div>
                         {isSelected && (
@@ -178,7 +178,7 @@ export default function TemplateFormDialog({
           {templateItems.length > 0 && (
             <div className="p-3 bg-muted/50 rounded-lg">
               <p className="font-medium">
-                Template Total: €{calculateTotal().toFixed(2)} ({templateItems.length} items)
+                Template Total: ${calculateTotal().toFixed(2)} ({templateItems.length} items)
               </p>
             </div>
           )}

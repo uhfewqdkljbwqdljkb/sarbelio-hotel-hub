@@ -104,7 +104,7 @@ export default function ConciergePage() {
             <div className="p-2 rounded-lg bg-blue-100"><DollarSign className="h-5 w-5 text-blue-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Today's Revenue</p>
-              <p className="text-2xl font-bold">€{todayRevenue}</p>
+              <p className="text-2xl font-bold">${todayRevenue}</p>
             </div>
           </div>
         </div>
@@ -169,7 +169,7 @@ export default function ConciergePage() {
                                 <span>Guest: {request.guestName}</span>
                                 <span>Room: {request.roomNumber}</span>
                                 {request.scheduledFor && <span>Scheduled: {new Date(request.scheduledFor).toLocaleString()}</span>}
-                                {request.cost && <span className="text-green-600 font-medium">€{request.cost}</span>}
+                                {request.cost && <span className="text-green-600 font-medium">${request.cost}</span>}
                               </div>
                             </div>
                           </div>
@@ -214,7 +214,7 @@ export default function ConciergePage() {
                             </div>
                             <p className="text-sm text-muted-foreground">{service.description}</p>
                             <div className="flex items-center gap-4 mt-2 text-sm">
-                              <span className="font-medium text-green-600">€{service.price}</span>
+                              <span className="font-medium text-green-600">${service.price}</span>
                               {service.duration && <span className="text-muted-foreground">{service.duration} min</span>}
                             </div>
                           </div>
