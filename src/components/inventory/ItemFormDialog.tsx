@@ -52,6 +52,43 @@ export default function ItemFormDialog({
   const [submitted, setSubmitted] = useState(false);
   const [supplierDialogOpen, setSupplierDialogOpen] = useState(false);
 
+  // Populate form when editingItem changes or dialog opens
+  useEffect(() => {
+    if (open && editingItem) {
+      setFormData({
+        name: editingItem.name,
+        sku: editingItem.sku,
+        category: editingItem.category,
+        unit: editingItem.unit,
+        minStock: editingItem.minStock,
+        maxStock: editingItem.maxStock,
+        unitCost: editingItem.unitCost,
+        sellPrice: editingItem.sellPrice || 0,
+        location: editingItem.location || '',
+        destination: editingItem.destination,
+        supplierId: editingItem.supplierId || '',
+      });
+      setTouched({});
+      setSubmitted(false);
+    } else if (open && !editingItem) {
+      setFormData({
+        name: '',
+        sku: '',
+        category: 'FOOD',
+        unit: 'pcs',
+        minStock: 10,
+        maxStock: 100,
+        unitCost: 0,
+        sellPrice: 0,
+        location: '',
+        destination: 'INTERNAL',
+        supplierId: '',
+      });
+      setTouched({});
+      setSubmitted(false);
+    }
+  }, [open, editingItem]);
+
   const validationResult = useMemo(() => {
     return itemSchema.safeParse(formData);
   }, [formData]);
