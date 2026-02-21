@@ -191,7 +191,7 @@ const AddServiceRequestDialog: React.FC<AddServiceRequestDialogProps> = ({ open,
               name="cost"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Cost (€) (Optional)</FormLabel>
+                  <FormLabel>Cost ($) (Optional)</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="50" {...field} />
                   </FormControl>

@@ -53,14 +53,14 @@ export default function OrdersTab({
             <DollarSign className="h-4 w-4" />
             <span className="text-xs">Total Spent</span>
           </div>
-          <p className="text-2xl font-bold">€{(stats?.totalSpent || 0).toLocaleString()}</p>
+          <p className="text-2xl font-bold">${(stats?.totalSpent || 0).toLocaleString()}</p>
         </div>
         <div className="bg-muted/50 rounded-lg p-4">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
             <TrendingUp className="h-4 w-4" />
             <span className="text-xs">Avg Order</span>
           </div>
-          <p className="text-2xl font-bold">€{(stats?.averageOrderValue || 0).toFixed(0)}</p>
+          <p className="text-2xl font-bold">${(stats?.averageOrderValue || 0).toFixed(0)}</p>
         </div>
         <div className="bg-muted/50 rounded-lg p-4">
           <div className="flex items-center gap-2 text-blue-600 mb-1">
@@ -68,7 +68,7 @@ export default function OrdersTab({
             <span className="text-xs">This Month</span>
           </div>
           <p className="text-2xl font-bold text-blue-600">{stats?.ordersThisMonth || 0}</p>
-          <p className="text-xs text-muted-foreground">€{(stats?.spentThisMonth || 0).toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground">${(stats?.spentThisMonth || 0).toLocaleString()}</p>
         </div>
       </div>
 
@@ -105,7 +105,7 @@ export default function OrdersTab({
                     <td className="px-4 py-3 font-medium">{order.orderNumber}</td>
                     <td className="px-4 py-3">{order.supplierName}</td>
                     <td className="px-4 py-3 text-center">{order.items.length}</td>
-                    <td className="px-4 py-3 text-right font-medium">€{order.totalAmount.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right font-medium">${order.totalAmount.toFixed(2)}</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${poStatusColors[order.status]}`}>
                         {order.status}
@@ -167,7 +167,7 @@ export default function OrdersTab({
                     <td className="px-4 py-3 font-medium">{order.orderNumber}</td>
                     <td className="px-4 py-3">{order.supplierName}</td>
                     <td className="px-4 py-3 text-center">{order.items.length}</td>
-                    <td className="px-4 py-3 text-right font-medium">€{order.totalAmount.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right font-medium">${order.totalAmount.toFixed(2)}</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${poStatusColors[order.status]}`}>
                         {order.status}

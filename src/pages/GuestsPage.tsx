@@ -81,7 +81,7 @@ export default function GuestsPage() {
             <div className="p-2 rounded-lg bg-green-100"><DollarSign className="h-5 w-5 text-green-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Total Revenue</p>
-              <p className="text-2xl font-bold">€{totalRevenue.toLocaleString()}</p>
+              <p className="text-2xl font-bold">${totalRevenue.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -165,7 +165,7 @@ export default function GuestsPage() {
                   <div className="flex items-center justify-between mt-4 pt-3 border-t text-sm">
                     <div>
                       <span className="text-muted-foreground">Total Spent</span>
-                      <p className="font-semibold text-green-600">€{guest.totalSpent.toLocaleString()}</p>
+                      <p className="font-semibold text-green-600">${guest.totalSpent.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
                       <span className="text-muted-foreground">Stays</span>

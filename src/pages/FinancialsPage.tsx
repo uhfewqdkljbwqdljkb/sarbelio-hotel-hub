@@ -67,7 +67,7 @@ export default function FinancialsPage() {
             <div className="p-2 rounded-lg bg-green-100"><TrendingUp className="h-5 w-5 text-green-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Total Revenue</p>
-              <p className="text-2xl font-bold">€{totalRevenue.toLocaleString()}</p>
+              <p className="text-2xl font-bold">${totalRevenue.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -76,7 +76,7 @@ export default function FinancialsPage() {
             <div className="p-2 rounded-lg bg-orange-100"><DollarSign className="h-5 w-5 text-orange-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Total Expenses</p>
-              <p className="text-2xl font-bold">€{totalExpenses.toLocaleString()}</p>
+              <p className="text-2xl font-bold">${totalExpenses.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -85,7 +85,7 @@ export default function FinancialsPage() {
             <div className="p-2 rounded-lg bg-blue-100"><ArrowUpRight className="h-5 w-5 text-blue-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Pending AR</p>
-              <p className="text-2xl font-bold">€{pendingReceivables.toLocaleString()}</p>
+              <p className="text-2xl font-bold">${pendingReceivables.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -94,7 +94,7 @@ export default function FinancialsPage() {
             <div className="p-2 rounded-lg bg-red-100"><ArrowDownRight className="h-5 w-5 text-red-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Overdue AP</p>
-              <p className="text-2xl font-bold">€{overduePayables.toLocaleString()}</p>
+              <p className="text-2xl font-bold">${overduePayables.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -107,7 +107,7 @@ export default function FinancialsPage() {
             <div className="p-2 rounded-lg bg-blue-50"><BedDouble className="h-5 w-5 text-blue-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Room Revenue</p>
-              <p className="text-xl font-bold text-blue-600">€{breakdown.roomRevenue.toLocaleString()}</p>
+              <p className="text-xl font-bold text-blue-600">${breakdown.roomRevenue.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -116,7 +116,7 @@ export default function FinancialsPage() {
             <div className="p-2 rounded-lg bg-green-50"><UtensilsCrossed className="h-5 w-5 text-green-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Restaurant</p>
-              <p className="text-xl font-bold text-green-600">€{breakdown.restaurantRevenue.toLocaleString()}</p>
+              <p className="text-xl font-bold text-green-600">${breakdown.restaurantRevenue.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function FinancialsPage() {
             <div className="p-2 rounded-lg bg-purple-50"><ShoppingBag className="h-5 w-5 text-purple-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Minimarket</p>
-              <p className="text-xl font-bold text-purple-600">€{breakdown.minimarketRevenue.toLocaleString()}</p>
+              <p className="text-xl font-bold text-purple-600">${breakdown.minimarketRevenue.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -134,7 +134,7 @@ export default function FinancialsPage() {
             <div className="p-2 rounded-lg bg-amber-50"><Sparkles className="h-5 w-5 text-amber-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Services</p>
-              <p className="text-xl font-bold text-amber-600">€{breakdown.servicesRevenue.toLocaleString()}</p>
+              <p className="text-xl font-bold text-amber-600">${breakdown.servicesRevenue.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -150,8 +150,8 @@ export default function FinancialsPage() {
               <AreaChart data={revenueData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `€${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
-                <Tooltip formatter={(value: number) => [`€${value.toLocaleString()}`, '']} />
+                <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                <Tooltip formatter={(value: number) => [`$${value.toLocaleString()}`, '']} />
                 <Legend />
                 <Area type="monotone" dataKey="rooms" stackId="1" stroke="#3b82f6" fill="#93c5fd" name="Rooms" />
                 <Area type="monotone" dataKey="restaurant" stackId="1" stroke="#10b981" fill="#6ee7b7" name="Restaurant" />
@@ -183,7 +183,7 @@ export default function FinancialsPage() {
                       <Cell key={`cell-${index}`} fill={BREAKDOWN_COLORS[index % BREAKDOWN_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => `€${value.toLocaleString()}`} />
+                  <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -235,7 +235,7 @@ export default function FinancialsPage() {
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${tx.type === 'CREDIT' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{tx.type === 'CREDIT' ? 'Revenue' : 'Expense'}</span>
                         </td>
                         <td className={`px-4 py-3 text-right font-medium ${tx.type === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
-                          {tx.type === 'CREDIT' ? '+' : '-'}€{tx.amount.toLocaleString()}
+                          {tx.type === 'CREDIT' ? '+' : '-'}${tx.amount.toLocaleString()}
                         </td>
                       </tr>
                     ))}
@@ -265,7 +265,7 @@ export default function FinancialsPage() {
                         <td className="px-4 py-3 font-mono text-sm">{account.code}</td>
                         <td className="px-4 py-3 font-medium">{account.name}</td>
                         <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded-full text-xs font-medium ${accountTypeColors[account.type] || ''}`}>{account.type}</span></td>
-                        <td className="px-4 py-3 text-right font-medium">€{account.balance.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right font-medium">${account.balance.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -296,7 +296,7 @@ export default function FinancialsPage() {
                         <td className="px-4 py-3 font-medium">{invoice.invoiceNumber}</td>
                         <td className="px-4 py-3 text-center"><Badge variant={invoice.type === 'RECEIVABLE' ? 'default' : 'secondary'}>{invoice.type === 'RECEIVABLE' ? 'AR' : 'AP'}</Badge></td>
                         <td className="px-4 py-3">{invoice.customerOrVendor}</td>
-                        <td className="px-4 py-3 text-right font-medium">€{invoice.amount.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right font-medium">${invoice.amount.toLocaleString()}</td>
                         <td className="px-4 py-3 text-muted-foreground">{invoice.dueDate}</td>
                         <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded-full text-xs font-medium ${invoiceStatusColors[invoice.status] || ''}`}>{invoice.status}</span></td>
                       </tr>

@@ -70,7 +70,7 @@ export default function SupplierCard({
                       <p className="text-muted-foreground text-xs">{item.sku}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium">€{item.unitCost.toFixed(2)}</p>
+                      <p className="font-medium">${item.unitCost.toFixed(2)}</p>
                       <span className={`px-1.5 py-0.5 rounded text-xs ${statusColors[status]}`}>
                         {item.quantity} {item.unit}
                       </span>

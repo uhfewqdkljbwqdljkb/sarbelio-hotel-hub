@@ -119,7 +119,7 @@ export default function MinimarketPage() {
     setCart([]);
     setCheckoutOpen(false);
     setRoomNumber('');
-    toast({ title: "Sale completed!", description: `Total: €${cartTotal.toFixed(2)}` });
+    toast({ title: "Sale completed!", description: `Total: $${cartTotal.toFixed(2)}` });
   };
 
   if (isLoading) {
@@ -139,7 +139,7 @@ export default function MinimarketPage() {
             <div className="p-2 rounded-lg bg-green-100"><TrendingUp className="h-5 w-5 text-green-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Today's Revenue</p>
-              <p className="text-2xl font-bold">€{todayRevenue.toFixed(2)}</p>
+              <p className="text-2xl font-bold">${todayRevenue.toFixed(2)}</p>
             </div>
           </div>
         </div>
@@ -215,7 +215,7 @@ export default function MinimarketPage() {
                         </div>
                         <p className="font-medium text-sm truncate">{item.name}</p>
                         <div className="flex items-center justify-between mt-1">
-                          <span className="text-primary-700 font-bold">€{(item.sellPrice || 0).toFixed(2)}</span>
+                          <span className="text-primary-700 font-bold">${(item.sellPrice || 0).toFixed(2)}</span>
                           <span className="text-xs text-muted-foreground">{item.quantity} left</span>
                         </div>
                       </button>
@@ -243,7 +243,7 @@ export default function MinimarketPage() {
                           <div key={item.itemId} className="flex items-center gap-3 bg-card rounded-lg p-3">
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm truncate">{item.itemName}</p>
-                              <p className="text-xs text-muted-foreground">€{item.unitPrice.toFixed(2)} each</p>
+                              <p className="text-xs text-muted-foreground">${item.unitPrice.toFixed(2)} each</p>
                             </div>
                             <div className="flex items-center gap-2">
                               <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateCartQuantity(item.itemId, -1)}>
@@ -255,7 +255,7 @@ export default function MinimarketPage() {
                               </Button>
                             </div>
                             <div className="text-right min-w-[60px]">
-                              <p className="font-bold">€{item.total.toFixed(2)}</p>
+                              <p className="font-bold">${item.total.toFixed(2)}</p>
                               <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500" onClick={() => removeFromCart(item.itemId)}>
                                 <Trash2 className="h-3 w-3" />
                               </Button>
@@ -267,7 +267,7 @@ export default function MinimarketPage() {
                       <div className="border-t mt-4 pt-4">
                         <div className="flex justify-between text-lg font-bold mb-4">
                           <span>Total</span>
-                          <span>€{cartTotal.toFixed(2)}</span>
+                          <span>${cartTotal.toFixed(2)}</span>
                         </div>
                         <Button className="w-full bg-primary-200 text-primary-900 hover:bg-primary-300" onClick={() => setCheckoutOpen(true)}>
                           Checkout
@@ -305,8 +305,8 @@ export default function MinimarketPage() {
                         <td className="px-4 py-3 text-center">
                           <span className={item.quantity <= item.minStock ? 'text-red-600 font-semibold' : ''}>{item.quantity}</span>
                         </td>
-                        <td className="px-4 py-3 text-right text-muted-foreground">€{item.unitCost.toFixed(2)}</td>
-                        <td className="px-4 py-3 text-right font-medium">€{(item.sellPrice || 0).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right text-muted-foreground">${item.unitCost.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right font-medium">${(item.sellPrice || 0).toFixed(2)}</td>
                         <td className="px-4 py-3 text-right text-green-600">{margin}%</td>
                       </tr>
                     );
@@ -345,7 +345,7 @@ export default function MinimarketPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">{sale.roomNumber || '-'}</td>
-                      <td className="px-4 py-3 text-right font-bold">€{sale.total.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-bold">${sale.total.toFixed(2)}</td>
                       <td className="px-4 py-3 text-muted-foreground">{sale.cashierName}</td>
                     </tr>
                   ))}
@@ -363,7 +363,7 @@ export default function MinimarketPage() {
           <div className="space-y-4 py-4">
             <div className="bg-muted/50 rounded-lg p-4">
               <p className="text-sm text-muted-foreground mb-2">{cart.length} items</p>
-              <p className="text-3xl font-bold">€{cartTotal.toFixed(2)}</p>
+              <p className="text-3xl font-bold">${cartTotal.toFixed(2)}</p>
             </div>
 
             <div className="space-y-3">
