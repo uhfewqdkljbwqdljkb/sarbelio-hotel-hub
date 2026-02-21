@@ -20,28 +20,18 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DollarSign, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { useCommissionReport, useMarkCommissionPaid } from '@/hooks/useSales';
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format } from 'date-fns';
 import { CommissionStatus } from '@/types';
+import { DateRange } from '@/components/shared/DateRangeFilter';
 
-export function CommissionReport() {
-  const [period, setPeriod] = useState('this-month');
+interface CommissionReportProps {
+  dateRange: DateRange;
+}
+
+export function CommissionReport({ dateRange }: CommissionReportProps) {
   const [statusFilter, setStatusFilter] = useState<'ALL' | CommissionStatus>('ALL');
 
-  const getDateRange = () => {
-    const now = new Date();
-    switch (period) {
-      case 'this-month':
-        return { start: startOfMonth(now), end: now };
-      case 'last-month':
-        const lastMonth = subMonths(now, 1);
-        return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
-      default:
-        return { start: startOfMonth(now), end: now };
-    }
-  };
-
-  const { start, end } = getDateRange();
-  const { data: report, isLoading } = useCommissionReport(start, end);
+  const { data: report, isLoading } = useCommissionReport(dateRange.from, dateRange.to);
   const markPaid = useMarkCommissionPaid();
 
   const filteredReport = report?.filter(
@@ -87,28 +77,17 @@ export function CommissionReport() {
           )}
         </div>
 
-        <div className="flex gap-2">
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-            <SelectTrigger className="w-[130px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Status</SelectItem>
-              <SelectItem value="PENDING">Pending</SelectItem>
-              <SelectItem value="APPROVED">Approved</SelectItem>
-              <SelectItem value="PAID">Paid</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="this-month">This Month</SelectItem>
-              <SelectItem value="last-month">Last Month</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+          <SelectTrigger className="w-[130px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All Status</SelectItem>
+            <SelectItem value="PENDING">Pending</SelectItem>
+            <SelectItem value="APPROVED">Approved</SelectItem>
+            <SelectItem value="PAID">Paid</SelectItem>
+          </SelectContent>
+        </Select>
       </CardHeader>
       <CardContent>
         <div className="rounded-md border">

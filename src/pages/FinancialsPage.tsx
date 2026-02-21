@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, FileText, TrendingUp, ArrowUpRight, ArrowDownRight, Loader2, ShoppingBag, UtensilsCrossed, BedDouble, Sparkles } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import { useChartOfAccounts, useInvoices, useRevenueData, useFinancialSummary, useCombinedTransactions } from '@/hooks/useFinancials';
+import { DateRangeFilter, DateRange, getPresetRange } from '@/components/shared/DateRangeFilter';
+import { startOfMonth } from 'date-fns';
 
 const accountTypeColors: Record<string, string> = {
   ASSET: 'bg-blue-100 text-blue-700',
@@ -23,11 +26,16 @@ const invoiceStatusColors: Record<string, string> = {
 const BREAKDOWN_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b'];
 
 export default function FinancialsPage() {
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: startOfMonth(new Date()),
+    to: new Date(),
+  });
+
   const { data: accounts = [], isLoading: loadingAccounts } = useChartOfAccounts();
   const { data: invoices = [], isLoading: loadingInvoices } = useInvoices();
-  const { data: revenueData = [], isLoading: loadingRevenue } = useRevenueData();
-  const { data: summary, isLoading: loadingSummary } = useFinancialSummary();
-  const { data: transactions = [], isLoading: loadingTransactions } = useCombinedTransactions();
+  const { data: revenueData = [], isLoading: loadingRevenue } = useRevenueData(dateRange.from, dateRange.to);
+  const { data: summary, isLoading: loadingSummary } = useFinancialSummary(dateRange.from, dateRange.to);
+  const { data: transactions = [], isLoading: loadingTransactions } = useCombinedTransactions(dateRange.from, dateRange.to);
 
   const isLoading = loadingAccounts || loadingInvoices || loadingRevenue || loadingSummary || loadingTransactions;
 
@@ -60,6 +68,12 @@ export default function FinancialsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Date Range Filter */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <h1 className="text-2xl font-bold tracking-tight">Financials</h1>
+        <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-card rounded-xl border p-4">
@@ -144,7 +158,7 @@ export default function FinancialsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Revenue Chart */}
         <div className="bg-card rounded-xl border p-6 lg:col-span-2">
-          <h3 className="text-lg font-semibold mb-4">Revenue Trend (Last 14 Days)</h3>
+          <h3 className="text-lg font-semibold mb-4">Revenue Trend</h3>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={revenueData}>

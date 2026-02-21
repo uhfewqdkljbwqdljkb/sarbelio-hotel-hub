@@ -12,22 +12,31 @@ import { DepositTracker } from '@/components/sales/DepositTracker';
 import { CommissionReport } from '@/components/sales/CommissionReport';
 import { SalesOverviewCards } from '@/components/sales/SalesOverviewCards';
 import { useSalesStats } from '@/hooks/useSales';
+import { DateRangeFilter, DateRange } from '@/components/shared/DateRangeFilter';
+import { startOfMonth } from 'date-fns';
 
 export default function SalesManagement() {
   const [activeTab, setActiveTab] = useState('overview');
   const { data: stats, isLoading } = useSalesStats();
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: startOfMonth(new Date()),
+    to: new Date(),
+  });
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-3">
-          <DollarSign className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold tracking-tight">Sales Management</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <DollarSign className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold tracking-tight">Sales Management</h1>
+          </div>
+          <p className="text-muted-foreground">
+            Track bookings, commissions, and deposits
+          </p>
         </div>
-        <p className="text-muted-foreground">
-          Track bookings, commissions, and deposits
-        </p>
+        <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
       </div>
 
       {/* Overview Stats Cards */}
@@ -55,7 +64,7 @@ export default function SalesManagement() {
         </TabsList>
 
         <TabsContent value="overview">
-          <SalesLeaderboard />
+          <SalesLeaderboard dateRange={dateRange} />
         </TabsContent>
 
         <TabsContent value="deposits">
@@ -63,7 +72,7 @@ export default function SalesManagement() {
         </TabsContent>
 
         <TabsContent value="commissions">
-          <CommissionReport />
+          <CommissionReport dateRange={dateRange} />
         </TabsContent>
 
         <TabsContent value="settings">
