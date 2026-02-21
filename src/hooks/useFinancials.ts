@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ChartOfAccount, Invoice, Transaction, RevenueData } from '@/types/financials';
-import { format, subDays, parseISO, startOfDay } from 'date-fns';
+import { format, subDays, parseISO, eachDayOfInterval } from 'date-fns';
 
 // Fetch chart of accounts
 export function useChartOfAccounts() {
@@ -79,42 +79,53 @@ export function useTransactions() {
 }
 
 // Aggregate revenue data from reservations, restaurant orders, and minimarket sales
-export function useRevenueData() {
+export function useRevenueData(startDate?: Date, endDate?: Date) {
+  const fromDate = startDate || subDays(new Date(), 13);
+  const toDate = endDate || new Date();
+
   return useQuery({
-    queryKey: ['revenue-data'],
+    queryKey: ['revenue-data', fromDate.toISOString(), toDate.toISOString()],
     queryFn: async (): Promise<RevenueData[]> => {
-      const last14Days = Array.from({ length: 14 }, (_, i) => {
-        const date = subDays(new Date(), 13 - i);
-        return format(date, 'yyyy-MM-dd');
-      });
+      const days = eachDayOfInterval({ start: fromDate, end: toDate }).map(d => format(d, 'yyyy-MM-dd'));
+
+      const fromStr = days[0];
+      const toStr = days[days.length - 1];
 
       // Fetch reservations (room revenue)
       const { data: reservations } = await supabase
         .from('reservations')
         .select('check_in, total_amount, status')
-        .in('status', ['CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT']);
+        .in('status', ['CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT'])
+        .gte('check_in', fromStr)
+        .lte('check_in', toStr);
 
       // Fetch restaurant orders (F&B revenue)
       const { data: posOrders } = await supabase
         .from('pos_orders')
         .select('created_at, total_amount, status')
-        .eq('status', 'PAID');
+        .eq('status', 'PAID')
+        .gte('created_at', fromStr)
+        .lte('created_at', toStr + 'T23:59:59');
 
       // Fetch minimarket sales
       const { data: minimarketSales } = await supabase
         .from('minimarket_sales')
-        .select('sold_at, total_price');
+        .select('sold_at, total_price')
+        .gte('sold_at', fromStr)
+        .lte('sold_at', toStr + 'T23:59:59');
 
       // Fetch service requests with costs (other revenue)
       const { data: serviceRequests } = await supabase
         .from('service_requests')
         .select('completed_at, cost, status')
-        .eq('status', 'COMPLETED');
+        .eq('status', 'COMPLETED')
+        .gte('completed_at', fromStr)
+        .lte('completed_at', toStr + 'T23:59:59');
 
       // Aggregate by date
       const revenueByDate: Record<string, RevenueData> = {};
 
-      last14Days.forEach(date => {
+      days.forEach(date => {
         revenueByDate[date] = {
           date: format(parseISO(date), 'MMM d'),
           rooms: 0,
@@ -124,7 +135,6 @@ export function useRevenueData() {
         };
       });
 
-      // Aggregate room revenue from reservations
       (reservations || []).forEach(r => {
         const checkIn = r.check_in;
         if (checkIn && revenueByDate[checkIn]) {
@@ -132,7 +142,6 @@ export function useRevenueData() {
         }
       });
 
-      // Aggregate restaurant revenue
       (posOrders || []).forEach(o => {
         if (o.created_at) {
           const date = format(new Date(o.created_at), 'yyyy-MM-dd');
@@ -142,7 +151,6 @@ export function useRevenueData() {
         }
       });
 
-      // Aggregate minimarket revenue into services
       (minimarketSales || []).forEach(s => {
         if (s.sold_at) {
           const date = format(new Date(s.sold_at), 'yyyy-MM-dd');
@@ -152,7 +160,6 @@ export function useRevenueData() {
         }
       });
 
-      // Aggregate service requests revenue
       (serviceRequests || []).forEach(sr => {
         if (sr.completed_at) {
           const date = format(new Date(sr.completed_at), 'yyyy-MM-dd');
@@ -162,8 +169,7 @@ export function useRevenueData() {
         }
       });
 
-      // Calculate totals
-      return last14Days.map(date => {
+      return days.map(date => {
         const data = revenueByDate[date];
         data.total = data.rooms + data.restaurant + data.services;
         return data;
@@ -172,46 +178,67 @@ export function useRevenueData() {
   });
 }
 
-// Financial summary combining all sources
-export function useFinancialSummary() {
+// Financial summary combining all sources - now accepts date range
+export function useFinancialSummary(startDate?: Date, endDate?: Date) {
+  const fromDate = startDate;
+  const toDate = endDate;
+
   return useQuery({
-    queryKey: ['financial-summary'],
+    queryKey: ['financial-summary', fromDate?.toISOString(), toDate?.toISOString()],
     queryFn: async () => {
+      const fromStr = fromDate ? format(fromDate, 'yyyy-MM-dd') : undefined;
+      const toStr = toDate ? format(toDate, 'yyyy-MM-dd') : undefined;
+
       // Revenue from reservations
-      const { data: reservations } = await supabase
+      let resQuery = supabase
         .from('reservations')
         .select('total_amount, status')
         .in('status', ['CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT']);
+      if (fromStr) resQuery = resQuery.gte('check_in', fromStr);
+      if (toStr) resQuery = resQuery.lte('check_in', toStr);
+      const { data: reservations } = await resQuery;
       const roomRevenue = (reservations || []).reduce((sum, r) => sum + (Number(r.total_amount) || 0), 0);
 
       // Revenue from restaurant
-      const { data: posOrders } = await supabase
+      let posQuery = supabase
         .from('pos_orders')
         .select('total_amount, status')
         .eq('status', 'PAID');
+      if (fromStr) posQuery = posQuery.gte('created_at', fromStr);
+      if (toStr) posQuery = posQuery.lte('created_at', toStr + 'T23:59:59');
+      const { data: posOrders } = await posQuery;
       const restaurantRevenue = (posOrders || []).reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
 
       // Revenue from minimarket
-      const { data: minimarketSales } = await supabase
+      let miniQuery = supabase
         .from('minimarket_sales')
         .select('total_price');
+      if (fromStr) miniQuery = miniQuery.gte('sold_at', fromStr);
+      if (toStr) miniQuery = miniQuery.lte('sold_at', toStr + 'T23:59:59');
+      const { data: minimarketSales } = await miniQuery;
       const minimarketRevenue = (minimarketSales || []).reduce((sum, s) => sum + (Number(s.total_price) || 0), 0);
 
       // Revenue from services
-      const { data: serviceRequests } = await supabase
+      let svcQuery = supabase
         .from('service_requests')
         .select('cost, status')
         .eq('status', 'COMPLETED');
+      if (fromStr) svcQuery = svcQuery.gte('completed_at', fromStr);
+      if (toStr) svcQuery = svcQuery.lte('completed_at', toStr + 'T23:59:59');
+      const { data: serviceRequests } = await svcQuery;
       const servicesRevenue = (serviceRequests || []).reduce((sum, s) => sum + (Number(s.cost) || 0), 0);
 
       // Expenses from purchase orders
-      const { data: purchaseOrders } = await supabase
+      let poQuery = supabase
         .from('purchase_orders')
         .select('total_amount, status')
         .in('status', ['RECEIVED', 'ORDERED']);
+      if (fromStr) poQuery = poQuery.gte('created_at', fromStr);
+      if (toStr) poQuery = poQuery.lte('created_at', toStr + 'T23:59:59');
+      const { data: purchaseOrders } = await poQuery;
       const purchaseExpenses = (purchaseOrders || []).reduce((sum, po) => sum + (Number(po.total_amount) || 0), 0);
 
-      // Invoices summary
+      // Invoices summary (not date filtered - always show pending/overdue)
       const { data: invoices } = await supabase
         .from('invoices')
         .select('amount, status, invoice_type');
@@ -244,18 +271,26 @@ export function useFinancialSummary() {
   });
 }
 
-// Generate combined transactions from all sources
-export function useCombinedTransactions() {
+// Generate combined transactions from all sources - now accepts date range
+export function useCombinedTransactions(startDate?: Date, endDate?: Date) {
+  const fromDate = startDate;
+  const toDate = endDate;
+
   return useQuery({
-    queryKey: ['combined-transactions'],
+    queryKey: ['combined-transactions', fromDate?.toISOString(), toDate?.toISOString()],
     queryFn: async (): Promise<Transaction[]> => {
       const allTransactions: Transaction[] = [];
+      const fromStr = fromDate ? format(fromDate, 'yyyy-MM-dd') : undefined;
+      const toStr = toDate ? format(toDate, 'yyyy-MM-dd') : undefined;
 
       // Fetch existing transactions
-      const { data: dbTransactions } = await supabase
+      let txQuery = supabase
         .from('transactions')
         .select('*')
         .order('date', { ascending: false });
+      if (fromStr) txQuery = txQuery.gte('date', fromStr);
+      if (toStr) txQuery = txQuery.lte('date', toStr);
+      const { data: dbTransactions } = await txQuery;
 
       (dbTransactions || []).forEach(t => {
         allTransactions.push({
@@ -272,12 +307,15 @@ export function useCombinedTransactions() {
       });
 
       // Add reservation revenue as transactions
-      const { data: reservations } = await supabase
+      let resQuery = supabase
         .from('reservations')
         .select('*')
         .in('status', ['CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT'])
         .order('created_at', { ascending: false })
         .limit(50);
+      if (fromStr) resQuery = resQuery.gte('check_in', fromStr);
+      if (toStr) resQuery = resQuery.lte('check_in', toStr);
+      const { data: reservations } = await resQuery;
 
       (reservations || []).forEach(r => {
         allTransactions.push({
@@ -294,12 +332,15 @@ export function useCombinedTransactions() {
       });
 
       // Add restaurant orders as transactions
-      const { data: posOrders } = await supabase
+      let posQuery = supabase
         .from('pos_orders')
         .select('*')
         .eq('status', 'PAID')
         .order('created_at', { ascending: false })
         .limit(50);
+      if (fromStr) posQuery = posQuery.gte('created_at', fromStr);
+      if (toStr) posQuery = posQuery.lte('created_at', toStr + 'T23:59:59');
+      const { data: posOrders } = await posQuery;
 
       (posOrders || []).forEach(o => {
         allTransactions.push({
@@ -316,11 +357,14 @@ export function useCombinedTransactions() {
       });
 
       // Add minimarket sales as transactions
-      const { data: minimarketSales } = await supabase
+      let miniQuery = supabase
         .from('minimarket_sales')
         .select('*')
         .order('sold_at', { ascending: false })
         .limit(50);
+      if (fromStr) miniQuery = miniQuery.gte('sold_at', fromStr);
+      if (toStr) miniQuery = miniQuery.lte('sold_at', toStr + 'T23:59:59');
+      const { data: minimarketSales } = await miniQuery;
 
       (minimarketSales || []).forEach(s => {
         allTransactions.push({
@@ -337,12 +381,15 @@ export function useCombinedTransactions() {
       });
 
       // Add purchase orders as expenses
-      const { data: purchaseOrders } = await supabase
+      let poQuery = supabase
         .from('purchase_orders')
         .select('*')
         .in('status', ['ORDERED', 'RECEIVED'])
         .order('created_at', { ascending: false })
         .limit(50);
+      if (fromStr) poQuery = poQuery.gte('created_at', fromStr);
+      if (toStr) poQuery = poQuery.lte('created_at', toStr + 'T23:59:59');
+      const { data: purchaseOrders } = await poQuery;
 
       (purchaseOrders || []).forEach(po => {
         allTransactions.push({

@@ -1,38 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Trophy, Medal, Award } from 'lucide-react';
 import { useSalesLeaderboard } from '@/hooks/useSales';
-import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DateRange } from '@/components/shared/DateRangeFilter';
 
-export function SalesLeaderboard() {
-  const [period, setPeriod] = useState('this-month');
-  
-  const getDateRange = () => {
-    const now = new Date();
-    switch (period) {
-      case 'this-month':
-        return { start: startOfMonth(now), end: now };
-      case 'last-month':
-        const lastMonth = subMonths(now, 1);
-        return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
-      case 'this-year':
-        return { start: new Date(now.getFullYear(), 0, 1), end: now };
-      default:
-        return { start: startOfMonth(now), end: now };
-    }
-  };
+interface SalesLeaderboardProps {
+  dateRange: DateRange;
+}
 
-  const { start, end } = getDateRange();
-  const { data: leaderboard, isLoading } = useSalesLeaderboard(start, end);
+export function SalesLeaderboard({ dateRange }: SalesLeaderboardProps) {
+  const { data: leaderboard, isLoading } = useSalesLeaderboard(dateRange.from, dateRange.to);
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -62,21 +41,11 @@ export function SalesLeaderboard() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Trophy className="h-5 w-5 text-primary" />
           Sales Leaderboard
         </CardTitle>
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="this-month">This Month</SelectItem>
-            <SelectItem value="last-month">Last Month</SelectItem>
-            <SelectItem value="this-year">This Year</SelectItem>
-          </SelectContent>
-        </Select>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -96,13 +65,10 @@ export function SalesLeaderboard() {
                 key={entry.userId}
                 className={`flex items-center justify-between p-4 rounded-lg border ${getRankBgColor(index + 1)}`}
               >
-                {/* Rank */}
                 <div className="flex items-center gap-4">
                   <div className="w-12 flex justify-center">
                     {getRankIcon(index + 1)}
                   </div>
-
-                  {/* Avatar & Name */}
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={entry.avatarUrl} />
                     <AvatarFallback>
@@ -116,8 +82,6 @@ export function SalesLeaderboard() {
                     </p>
                   </div>
                 </div>
-
-                {/* Stats */}
                 <div className="text-right">
                   <p className="text-lg font-bold">${entry.totalRevenue.toLocaleString()}</p>
                   <p className="text-sm text-emerald-600">
