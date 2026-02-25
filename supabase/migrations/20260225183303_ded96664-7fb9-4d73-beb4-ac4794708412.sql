@@ -1,0 +1,1 @@
+ALTER TABLE public.reservations ADD COLUMN top_up_amount numeric NOT NULL DEFAULT 0;

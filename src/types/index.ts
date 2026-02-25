@@ -94,6 +94,7 @@ export interface Reservation {
   extraBedCount?: number;
   extraWoodCount?: number;
   discountAmount?: number;
+  topUpAmount?: number;
   
   // Sales & Commission Tracking
   createdByUserId?: string;

@@ -383,6 +383,7 @@ const ReservationsPage: React.FC = () => {
     extraBedCount: number;
     extraWoodCount: number;
     discountAmount: number;
+    topUpAmount: number;
     totalAmount: number;
   }) => {
     try {
@@ -391,6 +392,7 @@ const ReservationsPage: React.FC = () => {
         extraBedCount: data.extraBedCount,
         extraWoodCount: data.extraWoodCount,
         discountAmount: data.discountAmount,
+        topUpAmount: data.topUpAmount,
         totalAmount: data.totalAmount,
       });
       toast.success('Add-ons updated successfully');

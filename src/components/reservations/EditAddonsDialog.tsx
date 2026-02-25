@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Bed, Flame, Tag } from 'lucide-react';
+import { Loader2, Bed, Flame, Tag, TrendingUp } from 'lucide-react';
 import { Reservation } from '@/types';
 
 interface EditAddonsDialogProps {
@@ -20,6 +20,7 @@ interface EditAddonsDialogProps {
     extraBedCount: number;
     extraWoodCount: number;
     discountAmount: number;
+    topUpAmount: number;
     totalAmount: number;
   }) => Promise<void>;
   isUpdating?: boolean;
@@ -40,12 +41,14 @@ export function EditAddonsDialog({
   const [extraBedCount, setExtraBedCount] = useState(0);
   const [extraWoodCount, setExtraWoodCount] = useState(0);
   const [discountAmount, setDiscountAmount] = useState(0);
+  const [topUpAmount, setTopUpAmount] = useState(0);
 
   useEffect(() => {
     if (reservation) {
       setExtraBedCount(reservation.extraBedCount || 0);
       setExtraWoodCount(reservation.extraWoodCount || 0);
       setDiscountAmount(reservation.discountAmount || 0);
+      setTopUpAmount(reservation.topUpAmount || 0);
     }
   }, [reservation]);
 
@@ -55,11 +58,12 @@ export function EditAddonsDialog({
   const currentExtras = (reservation.extraBedCount || 0) * EXTRA_BED_PRICE + 
                         (reservation.extraWoodCount || 0) * EXTRA_WOOD_PRICE;
   const currentDiscount = reservation.discountAmount || 0;
-  const baseAmount = reservation.totalAmount - currentExtras + currentDiscount;
+  const currentTopUp = reservation.topUpAmount || 0;
+  const baseAmount = reservation.totalAmount - currentExtras + currentDiscount - currentTopUp;
 
   // Calculate new total with updated add-ons
   const newExtrasTotal = extraBedCount * EXTRA_BED_PRICE + extraWoodCount * EXTRA_WOOD_PRICE;
-  const newTotal = Math.max(0, baseAmount + newExtrasTotal - discountAmount);
+  const newTotal = Math.max(0, baseAmount + newExtrasTotal - discountAmount + topUpAmount);
 
   const handleSave = async () => {
     await onSave({
@@ -67,6 +71,7 @@ export function EditAddonsDialog({
       extraBedCount,
       extraWoodCount,
       discountAmount,
+      topUpAmount,
       totalAmount: newTotal,
     });
     onOpenChange(false);
@@ -76,7 +81,7 @@ export function EditAddonsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Add-ons & Discount</DialogTitle>
+          <DialogTitle>Edit Add-ons & Adjustments</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
@@ -142,6 +147,25 @@ export function EditAddonsDialog({
             </div>
           </div>
 
+          {/* Top-up */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-sm">
+              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+              Top-up Amount
+              <span className="text-xs text-muted-foreground ml-auto">Extra charge</span>
+            </Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+              <Input
+                type="number"
+                min="0"
+                className="pl-7"
+                value={topUpAmount}
+                onChange={(e) => setTopUpAmount(Math.max(0, parseFloat(e.target.value) || 0))}
+              />
+            </div>
+          </div>
+
           {/* Summary */}
           <div className="bg-secondary p-4 rounded-lg space-y-2">
             <div className="flex justify-between text-sm">
@@ -160,6 +184,13 @@ export function EditAddonsDialog({
               <div className="flex justify-between text-sm text-emerald-600">
                 <span>+ Extra Wood ({extraWoodCount}x ${EXTRA_WOOD_PRICE}):</span>
                 <span>+${(extraWoodCount * EXTRA_WOOD_PRICE).toLocaleString()}</span>
+              </div>
+            )}
+
+            {topUpAmount > 0 && (
+              <div className="flex justify-between text-sm text-blue-600">
+                <span>+ Top-up:</span>
+                <span>+${topUpAmount.toLocaleString()}</span>
               </div>
             )}
             
