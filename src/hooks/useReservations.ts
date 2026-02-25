@@ -27,6 +27,7 @@ interface DbReservation {
   extra_bed_count: number;
   extra_wood_count: number;
   discount_amount: number;
+  top_up_amount: number;
   // Sales & Commission fields
   created_by_user_id: string | null;
   created_by_user_name: string | null;
@@ -65,6 +66,7 @@ const mapDbReservationToReservation = (dbRes: DbReservation): Reservation => ({
   extraBedCount: dbRes.extra_bed_count ?? 0,
   extraWoodCount: dbRes.extra_wood_count ?? 0,
   discountAmount: dbRes.discount_amount ?? 0,
+  topUpAmount: dbRes.top_up_amount ?? 0,
   // Sales & Commission fields
   createdByUserId: dbRes.created_by_user_id || undefined,
   createdByUserName: dbRes.created_by_user_name || undefined,
@@ -119,6 +121,7 @@ export function useCreateReservation() {
       extraBedCount?: number;
       extraWoodCount?: number;
       discountAmount?: number;
+      topUpAmount?: number;
     }) => {
       if (!reservation.guestName || !reservation.checkIn || !reservation.checkOut) {
         throw new Error('Guest name, check-in and check-out dates are required');
@@ -146,6 +149,7 @@ export function useCreateReservation() {
           extra_bed_count: reservation.extraBedCount || 0,
           extra_wood_count: reservation.extraWoodCount || 0,
           discount_amount: reservation.discountAmount || 0,
+          top_up_amount: reservation.topUpAmount || 0,
         })
         .select()
         .single();
@@ -188,6 +192,7 @@ export function useUpdateReservation() {
       if (updates.extraBedCount !== undefined) updateData.extra_bed_count = updates.extraBedCount;
       if (updates.extraWoodCount !== undefined) updateData.extra_wood_count = updates.extraWoodCount;
       if (updates.discountAmount !== undefined) updateData.discount_amount = updates.discountAmount;
+      if (updates.topUpAmount !== undefined) updateData.top_up_amount = updates.topUpAmount;
 
       const { data, error } = await supabase
         .from('reservations')

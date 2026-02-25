@@ -1114,6 +1114,7 @@ export type Database = {
           room_type_id: string | null
           source: Database["public"]["Enums"]["booking_source"] | null
           status: Database["public"]["Enums"]["reservation_status"] | null
+          top_up_amount: number
           total_amount: number
           updated_at: string | null
         }
@@ -1152,6 +1153,7 @@ export type Database = {
           room_type_id?: string | null
           source?: Database["public"]["Enums"]["booking_source"] | null
           status?: Database["public"]["Enums"]["reservation_status"] | null
+          top_up_amount?: number
           total_amount?: number
           updated_at?: string | null
         }
@@ -1190,6 +1192,7 @@ export type Database = {
           room_type_id?: string | null
           source?: Database["public"]["Enums"]["booking_source"] | null
           status?: Database["public"]["Enums"]["reservation_status"] | null
+          top_up_amount?: number
           total_amount?: number
           updated_at?: string | null
         }
