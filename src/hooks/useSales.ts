@@ -169,6 +169,7 @@ export function useRecordDeposit() {
       queryClient.invalidateQueries({ queryKey: ['deposit-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['my-commissions'] });
       toast.success('Deposit recorded successfully');
     },
     onError: (error: Error) => {
