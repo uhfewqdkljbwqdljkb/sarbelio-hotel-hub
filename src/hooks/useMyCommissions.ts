@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { CommissionStatus } from '@/types';
+import { CommissionStatus, PaymentStatus } from '@/types';
 
 export interface MyCommissionStats {
   totalBookings: number;
@@ -9,6 +9,8 @@ export interface MyCommissionStats {
   pendingCommission: number;
   paidCommission: number;
   commissionRate: number;
+  totalDepositsCollected: number;
+  totalBalanceDue: number;
 }
 
 export interface MyReservationRow {
@@ -20,6 +22,9 @@ export interface MyReservationRow {
   totalAmount: number;
   commissionAmount: number;
   commissionStatus: CommissionStatus;
+  depositAmount: number;
+  balanceDue: number;
+  paymentStatus: PaymentStatus;
   createdAt: string;
 }
 
@@ -28,17 +33,15 @@ export function useMyCommissions(userId: string | undefined) {
     queryKey: ['my-commissions', userId],
     enabled: !!userId,
     queryFn: async () => {
-      // Fetch reservations created by this user
       const { data: reservations, error: resError } = await supabase
         .from('reservations')
-        .select('id, confirmation_code, guest_name, check_in, check_out, total_amount, commission_amount, commission_status, created_at, status')
+        .select('id, confirmation_code, guest_name, check_in, check_out, total_amount, commission_amount, commission_status, deposit_amount, balance_due, payment_status, created_at, status')
         .eq('created_by_user_id', userId!)
         .not('status', 'in', '("CANCELLED","NO_SHOW")')
         .order('created_at', { ascending: false });
 
       if (resError) throw resError;
 
-      // Fetch commission profile
       const { data: profile } = await supabase
         .from('commission_profiles')
         .select('base_commission_rate, is_active')
@@ -55,6 +58,9 @@ export function useMyCommissions(userId: string | undefined) {
         totalAmount: Number(r.total_amount),
         commissionAmount: Number(r.commission_amount || 0),
         commissionStatus: (r.commission_status as CommissionStatus) || 'PENDING',
+        depositAmount: Number(r.deposit_amount || 0),
+        balanceDue: Number(r.balance_due ?? r.total_amount),
+        paymentStatus: (r.payment_status as PaymentStatus) || 'UNPAID',
         createdAt: r.created_at || '',
       }));
 
@@ -63,6 +69,8 @@ export function useMyCommissions(userId: string | undefined) {
       const paidCommission = rows
         .filter((r) => r.commissionStatus === 'PAID')
         .reduce((s, r) => s + r.commissionAmount, 0);
+      const totalDepositsCollected = rows.reduce((s, r) => s + r.depositAmount, 0);
+      const totalBalanceDue = rows.reduce((s, r) => s + r.balanceDue, 0);
 
       const stats: MyCommissionStats = {
         totalBookings: rows.length,
@@ -71,6 +79,8 @@ export function useMyCommissions(userId: string | undefined) {
         pendingCommission: totalCommission - paidCommission,
         paidCommission,
         commissionRate: profile?.base_commission_rate ?? 0,
+        totalDepositsCollected,
+        totalBalanceDue,
       };
 
       return { stats, reservations: rows };
