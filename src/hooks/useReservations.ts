@@ -102,6 +102,8 @@ export function useCreateReservation() {
   
   return useMutation({
     mutationFn: async (reservation: {
+      createdByUserId?: string;
+      createdByUserName?: string;
       confirmationCode: string;
       guestName: string;
       guestEmail?: string;
@@ -150,6 +152,8 @@ export function useCreateReservation() {
           extra_wood_count: reservation.extraWoodCount || 0,
           discount_amount: reservation.discountAmount || 0,
           top_up_amount: reservation.topUpAmount || 0,
+          created_by_user_id: reservation.createdByUserId || null,
+          created_by_user_name: reservation.createdByUserName || null,
         })
         .select()
         .single();

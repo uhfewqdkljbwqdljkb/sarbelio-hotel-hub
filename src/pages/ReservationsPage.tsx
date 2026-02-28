@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useReservations, useCreateReservation, useCancelReservation, useUpdateReservation } from '@/hooks/useReservations';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCancelledReservations } from '@/hooks/useFinancials';
 import { useRooms } from '@/hooks/useRooms';
 import { useGuests, useCreateGuest } from '@/hooks/useGuests';
@@ -41,6 +42,7 @@ import { toast } from 'sonner';
 import { differenceInDays, format } from 'date-fns';
 
 const ReservationsPage: React.FC = () => {
+  const { user, profile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -210,6 +212,8 @@ const ReservationsPage: React.FC = () => {
         extraBedCount,
         extraWoodCount,
         discountAmount,
+        createdByUserId: user?.id,
+        createdByUserName: profile?.full_name || user?.email,
       });
 
       toast.success('Reservation created successfully!');

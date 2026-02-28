@@ -21,6 +21,7 @@ import ConciergePage from "@/pages/ConciergePage";
 import GuestsPage from "@/pages/GuestsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import SalesManagement from "@/pages/SalesManagement";
+import MyCommissionsPage from "@/pages/MyCommissionsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -107,6 +108,11 @@ const App = () => (
                     <Route path="/sales" element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <SalesManagement />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/my-commissions" element={
+                      <ProtectedRoute allowedRoles={['admin', 'reception']}>
+                        <MyCommissionsPage />
                       </ProtectedRoute>
                     } />
                     <Route path="*" element={<NotFound />} />
