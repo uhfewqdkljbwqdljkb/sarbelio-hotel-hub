@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -5,6 +6,7 @@ import { PurchaseOrder, OrderStats, PurchaseOrderStatus } from '@/types/inventor
 import { poStatusColors } from './InventoryConstants';
 import { Plus, TrendingUp, Package, DollarSign, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import OrderDetailsDialog from './OrderDetailsDialog';
 
 interface OrdersTabProps {
   orders: PurchaseOrder[];
@@ -19,6 +21,7 @@ export default function OrdersTab({
   onNewOrder,
   onUpdateStatus,
 }: OrdersTabProps) {
+  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
   const pendingOrders = orders.filter(o => ['DRAFT', 'PENDING', 'APPROVED', 'ORDERED'].includes(o.status));
   const completedOrders = orders.filter(o => o.status === 'RECEIVED');
   const cancelledOrders = orders.filter(o => o.status === 'CANCELLED');
@@ -101,7 +104,7 @@ export default function OrdersTab({
               </thead>
               <tbody className="divide-y divide-border">
                 {pendingOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-muted/30">
+                  <tr key={order.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setSelectedOrder(order)}>
                     <td className="px-4 py-3 font-medium">{order.orderNumber}</td>
                     <td className="px-4 py-3">{order.supplierName}</td>
                     <td className="px-4 py-3 text-center">{order.items.length}</td>
@@ -114,7 +117,7 @@ export default function OrdersTab({
                     <td className="px-4 py-3 text-muted-foreground">
                       {format(new Date(order.createdAt), 'MMM d, yyyy')}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                       <Select value={order.status} onValueChange={(v: PurchaseOrderStatus) => onUpdateStatus(order.id, v)}>
                         <SelectTrigger className="w-[120px] h-8">
                           <SelectValue />
@@ -163,7 +166,7 @@ export default function OrdersTab({
               </thead>
               <tbody className="divide-y divide-border">
                 {[...completedOrders, ...cancelledOrders].map((order) => (
-                  <tr key={order.id} className="hover:bg-muted/30">
+                  <tr key={order.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setSelectedOrder(order)}>
                     <td className="px-4 py-3 font-medium">{order.orderNumber}</td>
                     <td className="px-4 py-3">{order.supplierName}</td>
                     <td className="px-4 py-3 text-center">{order.items.length}</td>
@@ -186,6 +189,11 @@ export default function OrdersTab({
           </div>
         )}
       </div>
+      <OrderDetailsDialog
+        order={selectedOrder}
+        open={!!selectedOrder}
+        onOpenChange={(open) => !open && setSelectedOrder(null)}
+      />
     </div>
   );
 }
