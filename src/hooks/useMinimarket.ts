@@ -1,11 +1,38 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { MinimarketSaleItem } from '@/data/minimarketMock';
+import { format } from 'date-fns';
 
 interface CreateMinimarketSaleInput {
   items: MinimarketSaleItem[];
   paymentMethod: 'CASH' | 'CARD' | 'ROOM_CHARGE';
   roomNumber?: string;
+}
+
+export interface DbMinimarketSale {
+  id: string;
+  item_name: string | null;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  payment_method: string | null;
+  room_number: string | null;
+  sold_at: string | null;
+}
+
+export function useMinimarketSales() {
+  return useQuery({
+    queryKey: ['minimarket-sales'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('minimarket_sales')
+        .select('*')
+        .order('sold_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as DbMinimarketSale[];
+    },
+  });
 }
 
 export function useCreateMinimarketSale() {
@@ -33,6 +60,7 @@ export function useCreateMinimarketSale() {
       return soldAt;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['minimarket-sales'] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
       queryClient.invalidateQueries({ queryKey: ['revenue-data'] });
       queryClient.invalidateQueries({ queryKey: ['combined-transactions'] });

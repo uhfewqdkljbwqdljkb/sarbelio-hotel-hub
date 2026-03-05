@@ -169,7 +169,8 @@ export default function FinancialsPage() {
                 <Legend />
                 <Area type="monotone" dataKey="rooms" stackId="1" stroke="#3b82f6" fill="#93c5fd" name="Rooms" />
                 <Area type="monotone" dataKey="restaurant" stackId="1" stroke="#10b981" fill="#6ee7b7" name="Restaurant" />
-                <Area type="monotone" dataKey="services" stackId="1" stroke="#8b5cf6" fill="#c4b5fd" name="Minimarket & Services" />
+                <Area type="monotone" dataKey="minimarket" stackId="1" stroke="#8b5cf6" fill="#c4b5fd" name="Minimarket" />
+                <Area type="monotone" dataKey="services" stackId="1" stroke="#f59e0b" fill="#fcd34d" name="Services" />
               </AreaChart>
             </ResponsiveContainer>
           </div>

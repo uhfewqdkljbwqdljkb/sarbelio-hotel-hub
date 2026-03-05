@@ -130,6 +130,7 @@ export function useRevenueData(startDate?: Date, endDate?: Date) {
           date: format(parseISO(date), 'MMM d'),
           rooms: 0,
           restaurant: 0,
+          minimarket: 0,
           services: 0,
           total: 0,
         };
@@ -155,7 +156,7 @@ export function useRevenueData(startDate?: Date, endDate?: Date) {
         if (s.sold_at) {
           const date = format(new Date(s.sold_at), 'yyyy-MM-dd');
           if (revenueByDate[date]) {
-            revenueByDate[date].services += Number(s.total_price) || 0;
+            revenueByDate[date].minimarket += Number(s.total_price) || 0;
           }
         }
       });
@@ -171,7 +172,7 @@ export function useRevenueData(startDate?: Date, endDate?: Date) {
 
       return days.map(date => {
         const data = revenueByDate[date];
-        data.total = data.rooms + data.restaurant + data.services;
+        data.total = data.rooms + data.restaurant + data.minimarket + data.services;
         return data;
       });
     },
@@ -238,6 +239,16 @@ export function useFinancialSummary(startDate?: Date, endDate?: Date) {
       const { data: purchaseOrders } = await poQuery;
       const purchaseExpenses = (purchaseOrders || []).reduce((sum, po) => sum + (Number(po.total_amount) || 0), 0);
 
+      // Expenses from transactions table (DEBIT entries like salaries, utilities, etc.)
+      let debitQuery = supabase
+        .from('transactions')
+        .select('amount')
+        .eq('transaction_type', 'DEBIT');
+      if (fromStr) debitQuery = debitQuery.gte('date', fromStr);
+      if (toStr) debitQuery = debitQuery.lte('date', toStr);
+      const { data: debitTransactions } = await debitQuery;
+      const transactionExpenses = (debitTransactions || []).reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
       // Invoices summary (not date filtered - always show pending/overdue)
       const { data: invoices } = await supabase
         .from('invoices')
@@ -252,7 +263,7 @@ export function useFinancialSummary(startDate?: Date, endDate?: Date) {
         .reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
 
       const totalRevenue = roomRevenue + restaurantRevenue + minimarketRevenue + servicesRevenue;
-      const totalExpenses = purchaseExpenses;
+      const totalExpenses = purchaseExpenses + transactionExpenses;
 
       return {
         totalRevenue,
@@ -265,6 +276,7 @@ export function useFinancialSummary(startDate?: Date, endDate?: Date) {
           minimarketRevenue,
           servicesRevenue,
           purchaseExpenses,
+          transactionExpenses,
         },
       };
     },

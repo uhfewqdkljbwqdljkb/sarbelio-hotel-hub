@@ -14,13 +14,13 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 import { ChevronDown, Calendar, Users, Home, DollarSign, Loader2 } from 'lucide-react';
-import { format, subDays, parseISO, startOfDay, isWithinInterval } from 'date-fns';
+import { format, subDays, parseISO, startOfDay, startOfMonth } from 'date-fns';
 
 const Dashboard: React.FC = () => {
   const { data: reservations = [], isLoading: resLoading } = useReservations();
   const { data: rooms = [], isLoading: roomsLoading } = useRooms();
   const { data: guests = [], isLoading: guestsLoading } = useGuests();
-  const { data: summary, isLoading: summaryLoading } = useFinancialSummary();
+  const { data: summary, isLoading: summaryLoading } = useFinancialSummary(startOfMonth(new Date()), new Date());
 
   const isLoading = resLoading || roomsLoading || guestsLoading || summaryLoading;
 

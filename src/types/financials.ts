@@ -48,6 +48,7 @@ export interface RevenueData {
   date: string;
   rooms: number;
   restaurant: number;
+  minimarket: number;
   services: number;
   total: number;
 }

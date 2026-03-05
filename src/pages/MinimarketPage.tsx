@@ -8,12 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/hooks/use-toast';
-import { MINIMARKET_SALES, MinimarketSale, MinimarketSaleItem } from '@/data/minimarketMock';
+import { MinimarketSaleItem } from '@/data/minimarketMock';
 import { InventoryItem } from '@/types/inventory';
 import { ShoppingCart, Package, CreditCard, Banknote, Building, Search, Plus, Minus, Trash2, Receipt, TrendingUp, ShoppingBag, Loader2 } from 'lucide-react';
 import { useRooms } from '@/hooks/useRooms';
 import { useInventoryItems, useUpdateInventoryItem } from '@/hooks/useInventory';
-import { useCreateMinimarketSale } from '@/hooks/useMinimarket';
+import { useCreateMinimarketSale, useMinimarketSales } from '@/hooks/useMinimarket';
 
 const categoryLabels: Record<string, string> = {
   SNACKS: 'Snacks', BEVERAGE: 'Beverages', TOILETRIES: 'Toiletries',
@@ -23,6 +23,7 @@ const categoryLabels: Record<string, string> = {
 export default function MinimarketPage() {
   const { data: rooms = [] } = useRooms();
   const { data: allInventory = [], isLoading } = useInventoryItems();
+  const { data: dbSales = [], isLoading: salesLoading } = useMinimarketSales();
   const updateItem = useUpdateInventoryItem();
   const createSale = useCreateMinimarketSale();
   
@@ -32,7 +33,6 @@ export default function MinimarketPage() {
     [allInventory]
   );
   
-  const [sales, setSales] = useState<MinimarketSale[]>(MINIMARKET_SALES);
   const [cart, setCart] = useState<MinimarketSaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -44,10 +44,12 @@ export default function MinimarketPage() {
   // Filter rooms that are occupied (guests can charge to room)
   const occupiedRooms = rooms.filter(r => r.status === 'OCCUPIED');
 
-  // Stats
-  const todaySales = sales.filter(s => new Date(s.createdAt).toDateString() === new Date().toDateString());
-  const todayRevenue = sales.reduce((sum, s) => sum + s.total, 0);
-  const itemsSold = sales.reduce((sum, s) => sum + s.items.reduce((isum, i) => isum + i.quantity, 0), 0);
+  // Stats from database
+  const todayStr = new Date().toDateString();
+  const todaySales = dbSales.filter(s => s.sold_at && new Date(s.sold_at).toDateString() === todayStr);
+  const todayRevenue = todaySales.reduce((sum, s) => sum + Number(s.total_price), 0);
+  const totalTransactions = dbSales.length;
+  const itemsSold = dbSales.reduce((sum, s) => sum + s.quantity, 0);
   const lowStockItems = inventory.filter(i => i.quantity <= i.minStock).length;
 
   const categories = [...new Set(inventory.map(i => i.category))];
@@ -98,15 +100,7 @@ export default function MinimarketPage() {
       return;
     }
 
-    const sale: MinimarketSale = {
-      id: `ms_${Date.now()}`,
-      items: cart,
-      total: cartTotal,
-      paymentMethod,
-      roomNumber: paymentMethod === 'ROOM_CHARGE' ? roomNumber : undefined,
-      createdAt: new Date().toISOString(),
-      cashierName: 'Current User',
-    };
+
 
     try {
       // Deduct from inventory in database
@@ -124,7 +118,7 @@ export default function MinimarketPage() {
         roomNumber: paymentMethod === 'ROOM_CHARGE' ? roomNumber : undefined,
       });
 
-      setSales(prev => [sale, ...prev]);
+      
       setCart([]);
       setCheckoutOpen(false);
       setRoomNumber('');
@@ -161,7 +155,7 @@ export default function MinimarketPage() {
             <div className="p-2 rounded-lg bg-blue-100"><Receipt className="h-5 w-5 text-blue-600" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Transactions</p>
-              <p className="text-2xl font-bold">{sales.length}</p>
+              <p className="text-2xl font-bold">{totalTransactions}</p>
             </div>
           </div>
         </div>
@@ -332,40 +326,39 @@ export default function MinimarketPage() {
 
             {/* SALES HISTORY TAB */}
             <TabsContent value="sales" className="mt-0">
+              {dbSales.length === 0 ? (
+                <div className="py-12 text-center text-muted-foreground">No sales recorded yet</div>
+              ) : (
               <table className="w-full">
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Date/Time</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Items</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Item</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase">Qty</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase">Payment</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Room</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Total</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Cashier</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {sales.map(sale => (
+                  {dbSales.map(sale => (
                     <tr key={sale.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleString()}</td>
-                      <td className="px-4 py-3">
-                        <div className="text-sm">
-                          {sale.items.slice(0, 2).map(i => <span key={i.itemId} className="block truncate">{i.quantity}x {i.itemName}</span>)}
-                          {sale.items.length > 2 && <span className="text-muted-foreground">+{sale.items.length - 2} more</span>}
-                        </div>
-                      </td>
+                      <td className="px-4 py-3 text-sm">{sale.sold_at ? new Date(sale.sold_at).toLocaleString() : '-'}</td>
+                      <td className="px-4 py-3 font-medium">{sale.item_name || '-'}</td>
+                      <td className="px-4 py-3 text-center">{sale.quantity}</td>
                       <td className="px-4 py-3 text-center">
-                        <Badge variant={sale.paymentMethod === 'ROOM_CHARGE' ? 'default' : 'outline'}>
-                          {sale.paymentMethod === 'ROOM_CHARGE' ? <Building className="h-3 w-3 mr-1" /> : sale.paymentMethod === 'CARD' ? <CreditCard className="h-3 w-3 mr-1" /> : <Banknote className="h-3 w-3 mr-1" />}
-                          {sale.paymentMethod.replace('_', ' ')}
+                        <Badge variant={sale.payment_method === 'ROOM_CHARGE' ? 'default' : 'outline'}>
+                          {sale.payment_method === 'ROOM_CHARGE' ? <Building className="h-3 w-3 mr-1" /> : sale.payment_method === 'CARD' ? <CreditCard className="h-3 w-3 mr-1" /> : <Banknote className="h-3 w-3 mr-1" />}
+                          {(sale.payment_method || 'CASH').replace('_', ' ')}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3">{sale.roomNumber || '-'}</td>
-                      <td className="px-4 py-3 text-right font-bold">${sale.total.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{sale.cashierName}</td>
+                      <td className="px-4 py-3">{sale.room_number || '-'}</td>
+                      <td className="px-4 py-3 text-right font-bold">${Number(sale.total_price).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              )}
             </TabsContent>
           </div>
         </Tabs>

@@ -222,6 +222,9 @@ export function useCreateOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pos_orders'] });
       queryClient.invalidateQueries({ queryKey: ['restaurant_tables'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['revenue-data'] });
+      queryClient.invalidateQueries({ queryKey: ['combined-transactions'] });
     },
   });
 }
@@ -254,6 +257,9 @@ export function useUpdateOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pos_orders'] });
       queryClient.invalidateQueries({ queryKey: ['restaurant_tables'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['revenue-data'] });
+      queryClient.invalidateQueries({ queryKey: ['combined-transactions'] });
     },
   });
 }
