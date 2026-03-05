@@ -129,6 +129,7 @@ export function useUpdateInventoryItem() {
       
       if (item.name !== undefined) updateData.name = item.name;
       if (item.sku !== undefined) updateData.sku = item.sku;
+      if (item.quantity !== undefined) updateData.quantity = item.quantity;
       if (item.unit !== undefined) updateData.unit = item.unit;
       if (item.minStock !== undefined) updateData.min_quantity = item.minStock;
       if (item.maxStock !== undefined) updateData.max_quantity = item.maxStock;
