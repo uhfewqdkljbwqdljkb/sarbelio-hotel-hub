@@ -186,9 +186,61 @@ export default function MinimarketPage() {
           <div className="p-6">
             {/* POS TAB */}
             <TabsContent value="pos" className="mt-0">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                {/* Cart */}
+                <div className="order-first lg:order-last lg:col-span-1">
+                  <div className="sticky top-4 z-10 rounded-lg border bg-card/95 p-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/90">
+                    <h3 className="mb-4 flex items-center gap-2 font-semibold">
+                      <ShoppingCart className="h-5 w-5" />
+                      Cart ({cart.length})
+                    </h3>
+
+                    {cart.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">Cart is empty</p>
+                    ) : (
+                      <>
+                        <div className="space-y-3 max-h-[32vh] overflow-y-auto pr-1 lg:max-h-[400px]">
+                          {cart.map(item => (
+                            <div key={item.itemId} className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium">{item.itemName}</p>
+                                <p className="text-xs text-muted-foreground">${item.unitPrice.toFixed(2)} each</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateCartQuantity(item.itemId, -1)}>
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <span className="w-8 text-center font-medium">{item.quantity}</span>
+                                <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateCartQuantity(item.itemId, 1)}>
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              <div className="min-w-[60px] text-right">
+                                <p className="font-bold">${item.total.toFixed(2)}</p>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeFromCart(item.itemId)}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="mt-4 border-t pt-4">
+                          <div className="mb-4 flex justify-between text-lg font-bold">
+                            <span>Total</span>
+                            <span>${cartTotal.toFixed(2)}</span>
+                          </div>
+                          <Button className="w-full" onClick={() => setCheckoutOpen(true)}>
+                            Checkout
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
                 {/* Products Grid */}
-                <div className="lg:col-span-2 space-y-4">
+                <div className="order-last space-y-4 lg:order-first lg:col-span-2">
                   <div className="flex flex-wrap gap-3">
                     <div className="relative flex-1 min-w-[200px]">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -203,19 +255,19 @@ export default function MinimarketPage() {
                     </Select>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                     {filteredItems.map(item => (
                       <button
                         key={item.id}
                         onClick={() => addToCart(item)}
-                        className="bg-muted/30 hover:bg-muted/50 border rounded-lg p-3 text-left transition-colors"
+                        className="rounded-lg border bg-muted/30 p-3 text-left transition-colors hover:bg-muted/50"
                       >
-                        <div className="aspect-square bg-muted rounded-lg mb-2 flex items-center justify-center">
+                        <div className="mb-2 flex aspect-square items-center justify-center rounded-lg bg-muted">
                           <Package className="h-8 w-8 text-muted-foreground" />
                         </div>
-                        <p className="font-medium text-sm truncate">{item.name}</p>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-primary-700 font-bold">${(item.sellPrice || 0).toFixed(2)}</span>
+                        <p className="truncate text-sm font-medium">{item.name}</p>
+                        <div className="mt-1 flex items-center justify-between">
+                          <span className="font-bold text-primary">${(item.sellPrice || 0).toFixed(2)}</span>
                           <span className="text-xs text-muted-foreground">{item.quantity} left</span>
                         </div>
                       </button>
@@ -223,57 +275,7 @@ export default function MinimarketPage() {
                   </div>
 
                   {filteredItems.length === 0 && (
-                    <div className="text-center py-12 text-muted-foreground">No products found</div>
-                  )}
-                </div>
-
-                {/* Cart */}
-                <div className="bg-muted/30 rounded-lg border p-4 h-fit sticky top-4">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <ShoppingCart className="h-5 w-5" />
-                    Cart ({cart.length})
-                  </h3>
-
-                  {cart.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">Cart is empty</p>
-                  ) : (
-                    <>
-                      <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                        {cart.map(item => (
-                          <div key={item.itemId} className="flex items-center gap-3 bg-card rounded-lg p-3">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">{item.itemName}</p>
-                              <p className="text-xs text-muted-foreground">${item.unitPrice.toFixed(2)} each</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateCartQuantity(item.itemId, -1)}>
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <span className="w-8 text-center font-medium">{item.quantity}</span>
-                              <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateCartQuantity(item.itemId, 1)}>
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            <div className="text-right min-w-[60px]">
-                              <p className="font-bold">${item.total.toFixed(2)}</p>
-                              <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500" onClick={() => removeFromCart(item.itemId)}>
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="border-t mt-4 pt-4">
-                        <div className="flex justify-between text-lg font-bold mb-4">
-                          <span>Total</span>
-                          <span>${cartTotal.toFixed(2)}</span>
-                        </div>
-                        <Button className="w-full bg-primary-200 text-primary-900 hover:bg-primary-300" onClick={() => setCheckoutOpen(true)}>
-                          Checkout
-                        </Button>
-                      </div>
-                    </>
+                    <div className="py-12 text-center text-muted-foreground">No products found</div>
                   )}
                 </div>
               </div>
