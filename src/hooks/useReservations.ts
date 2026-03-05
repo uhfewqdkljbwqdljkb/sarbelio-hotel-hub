@@ -166,6 +166,9 @@ export function useCreateReservation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['revenue-data'] });
+      queryClient.invalidateQueries({ queryKey: ['combined-transactions'] });
     },
   });
 }
@@ -211,6 +214,9 @@ export function useUpdateReservation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
       queryClient.invalidateQueries({ queryKey: ['calendar_reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['revenue-data'] });
+      queryClient.invalidateQueries({ queryKey: ['combined-transactions'] });
     },
   });
 }
