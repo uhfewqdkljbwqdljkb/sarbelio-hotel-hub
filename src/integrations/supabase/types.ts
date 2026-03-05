@@ -709,6 +709,7 @@ export type Database = {
       minimarket_sales: {
         Row: {
           id: string
+          item_name: string | null
           payment_method: string | null
           product_id: string | null
           quantity: number
@@ -719,6 +720,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          item_name?: string | null
           payment_method?: string | null
           product_id?: string | null
           quantity?: number
@@ -729,6 +731,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          item_name?: string | null
           payment_method?: string | null
           product_id?: string | null
           quantity?: number

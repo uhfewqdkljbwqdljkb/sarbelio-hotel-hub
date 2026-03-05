@@ -13,6 +13,7 @@ import { InventoryItem } from '@/types/inventory';
 import { ShoppingCart, Package, CreditCard, Banknote, Building, Search, Plus, Minus, Trash2, Receipt, TrendingUp, ShoppingBag, Loader2 } from 'lucide-react';
 import { useRooms } from '@/hooks/useRooms';
 import { useInventoryItems, useUpdateInventoryItem } from '@/hooks/useInventory';
+import { useCreateMinimarketSale } from '@/hooks/useMinimarket';
 
 const categoryLabels: Record<string, string> = {
   SNACKS: 'Snacks', BEVERAGE: 'Beverages', TOILETRIES: 'Toiletries',
@@ -23,6 +24,7 @@ export default function MinimarketPage() {
   const { data: rooms = [] } = useRooms();
   const { data: allInventory = [], isLoading } = useInventoryItems();
   const updateItem = useUpdateInventoryItem();
+  const createSale = useCreateMinimarketSale();
   
   // Filter inventory items that are tagged for minimarket
   const inventory = useMemo(() => 
@@ -106,20 +108,31 @@ export default function MinimarketPage() {
       cashierName: 'Current User',
     };
 
-    // Deduct from inventory in database
-    for (const cartItem of cart) {
-      const item = inventory.find(i => i.id === cartItem.itemId);
-      if (item) {
-        const newQty = item.quantity - cartItem.quantity;
-        await updateItem.mutateAsync({ id: item.id, quantity: newQty });
+    try {
+      // Deduct from inventory in database
+      for (const cartItem of cart) {
+        const item = inventory.find(i => i.id === cartItem.itemId);
+        if (item) {
+          const newQty = item.quantity - cartItem.quantity;
+          await updateItem.mutateAsync({ id: item.id, quantity: newQty });
+        }
       }
-    }
 
-    setSales(prev => [sale, ...prev]);
-    setCart([]);
-    setCheckoutOpen(false);
-    setRoomNumber('');
-    toast({ title: "Sale completed!", description: `Total: $${cartTotal.toFixed(2)}` });
+      await createSale.mutateAsync({
+        items: cart,
+        paymentMethod,
+        roomNumber: paymentMethod === 'ROOM_CHARGE' ? roomNumber : undefined,
+      });
+
+      setSales(prev => [sale, ...prev]);
+      setCart([]);
+      setCheckoutOpen(false);
+      setRoomNumber('');
+      toast({ title: "Sale completed!", description: `Total: $${cartTotal.toFixed(2)}` });
+    } catch (error) {
+      console.error('Failed to complete minimarket sale:', error);
+      toast({ title: "Sale failed", description: "The sale could not be saved.", variant: "destructive" });
+    }
   };
 
   if (isLoading) {
@@ -429,8 +442,8 @@ export default function MinimarketPage() {
               </div>
             )}
 
-            <Button onClick={handleCheckout} className="w-full bg-primary-200 text-primary-900 hover:bg-primary-300">
-              Complete Sale
+            <Button onClick={handleCheckout} disabled={updateItem.isPending || createSale.isPending} className="w-full bg-primary-200 text-primary-900 hover:bg-primary-300">
+              {updateItem.isPending || createSale.isPending ? 'Saving...' : 'Complete Sale'}
             </Button>
           </div>
         </DialogContent>
